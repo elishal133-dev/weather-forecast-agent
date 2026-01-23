@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast Aggregator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌤️ Weather Forecast Aggregator</h1>
+            <p class="subtitle">Real-time weather data from multiple global forecast APIs</p>
+        </header>
+
+        <div class="controls">
+            <div class="location-selector">
+                <label for="location">Location:</label>
+                <select id="location">
+                    <option value="Tel Aviv" selected>Tel Aviv</option>
+                    <option value="Jerusalem">Jerusalem</option>
+                    <option value="Haifa">Haifa</option>
+                    <option value="Beer Sheva">Beer Sheva</option>
+                </select>
+            </div>
+            <button id="refresh-btn" onclick="loadForecast()">🔄 Refresh</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Fetching forecasts from all sources...</p>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="last-updated" class="last-updated" style="display: none;">
+            Last updated: <span id="update-time"></span>
+        </div>
+
+        <div id="forecast-container">
+            <div id="aggregated-forecast" class="forecast-section">
+                <h2>📊 Aggregated Forecast</h2>
+                <div id="aggregated-days" class="forecast-days"></div>
+            </div>
+
+            <div id="raw-data-section" style="display: none;">
+                <button onclick="toggleRawData()" class="toggle-btn">📋 Show Individual Sources</button>
+                <div id="raw-data" class="raw-data" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let forecastData = null;
+
+        // Load forecast on page load
+        window.onload = function() {
+            loadForecast();
+        };
+
+        async function loadForecast() {
+            const location = document.getElementById('location').value;
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+            const forecastContainer = document.getElementById('forecast-container');
+
+            // Show loading
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            forecastContainer.style.display = 'none';
+
+            try {
+                // Initial request
+                const response = await fetch(`/api/forecast?location=${encodeURIComponent(location)}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Data is cached and ready
+                    displayForecast(data.data);
+                } else {
+                    // Data is loading, poll for status
+                    pollStatus();
+                }
+            } catch (error) {
+                showError('Failed to load forecast: ' + error.message);
+            }
+        }
+
+        async function pollStatus() {
+            const maxAttempts = 60; // 60 seconds max
+            let attempts = 0;
+
+            const interval = setInterval(async () => {
+                attempts++;
+
+                if (attempts > maxAttempts) {
+                    clearInterval(interval);
+                    showError('Timeout: Failed to fetch forecast data');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+
+                    if (data.status === 'ready') {
+                        clearInterval(interval);
+                        displayForecast(data.data);
+                    }
+                } catch (error) {
+                    clearInterval(interval);
+                    showError('Failed to check status: ' + error.message);
+                }
+            }, 1000); // Poll every second
+        }
+
+        function displayForecast(data) {
+            const loadingDiv = document.getElementById('loading');
+            const forecastContainer = document.getElementById('forecast-container');
+            const aggregatedDays = document.getElementById('aggregated-days');
+            const lastUpdated = document.getElementById('last-updated');
+            const updateTime = document.getElementById('update-time');
+
+            loadingDiv.style.display = 'none';
+            forecastContainer.style.display = 'block';
+            lastUpdated.style.display = 'block';
+            updateTime.textContent = new Date().toLocaleString();
+
+            forecastData = data;
+
+            // Display aggregated forecast
+            aggregatedDays.innerHTML = '';
+            data.aggregated.forEach(day => {
+                const dayCard = createDayCard(day, true);
+                aggregatedDays.appendChild(dayCard);
+            });
+
+            // Show raw data toggle if we have raw data
+            if (data.raw && data.raw.length > 0) {
+                document.getElementById('raw-data-section').style.display = 'block';
+            }
+        }
+
+        function createDayCard(day, isAggregated) {
+            const card = document.createElement('div');
+            card.className = 'day-card';
+
+            const confidence = isAggregated ? day.confidence : null;
+            const confidenceClass = confidence ? getConfidenceClass(confidence) : '';
+
+            card.innerHTML = `
+                <div class="day-header">
+                    <div class="day-date">${formatDate(day.date)}</div>
+                    ${isAggregated ? `<div class="confidence ${confidenceClass}">${Math.round(confidence)}% confidence</div>` : ''}
+                </div>
+                <div class="day-body">
+                    <div class="temps">
+                        <div class="temp-high">
+                            <span class="temp-label">High</span>
+                            <span class="temp-value">${day.temp_high ? Math.round(day.temp_high) + '°C' : 'N/A'}</span>
+                        </div>
+                        <div class="temp-low">
+                            <span class="temp-label">Low</span>
+                            <span class="temp-value">${day.temp_low ? Math.round(day.temp_low) + '°C' : 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div class="details">
+                        <div class="detail-item">
+                            <span class="detail-icon">💨</span>
+                            <span class="detail-label">Wind:</span>
+                            <span>${day.wind_speed ? Math.round(day.wind_speed) + ' km/h' : 'N/A'} ${day.wind_direction || ''}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">☁️</span>
+                            <span class="detail-label">Cloud Cover:</span>
+                            <span>${day.cloud_cover ? formatCloudCover(day.cloud_cover, day.cloud_min_level) : 'N/A'}</span>
+                        </div>
+                        ${day.freezing_altitude ? `
+                        <div class="detail-item">
+                            <span class="detail-icon">❄️</span>
+                            <span class="detail-label">Freezing Level:</span>
+                            <span>${Math.round(day.freezing_altitude)}m</span>
+                        </div>
+                        ` : ''}
+                        <div class="detail-item">
+                            <span class="detail-icon">🌅</span>
+                            <span class="detail-label">Sunrise:</span>
+                            <span>${day.sunrise || 'N/A'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">🌇</span>
+                            <span class="detail-label">Sunset:</span>
+                            <span>${day.sunset || 'N/A'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">🌔</span>
+                            <span class="detail-label">Moonrise:</span>
+                            <span>${day.moonrise || 'N/A'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">🌑</span>
+                            <span class="detail-label">Moonset:</span>
+                            <span>${day.moonset || 'N/A'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-icon">🌙</span>
+                            <span class="detail-label">Moon Phase:</span>
+                            <span>${day.moon_illumination ? Math.round(day.moon_illumination) + '%' : 'N/A'}</span>
+                        </div>
+                    </div>
+                    ${day.hourly && day.hourly.length > 0 ? `
+                    <div class="hourly-section">
+                        <button class="hourly-toggle" onclick="toggleHourly(this)">
+                            📊 Show 3-Hourly Forecast ▼
+                        </button>
+                        <div class="hourly-data" style="display: none;">
+                            <div class="hourly-grid">
+                                ${day.hourly.map(h => `
+                                    <div class="hourly-item">
+                                        <div class="hourly-time">${h.time}</div>
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">🌡️</span>
+                                            <span>${h.temperature ? Math.round(h.temperature) + '°C' : 'N/A'}</span>
+                                        </div>
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">💨</span>
+                                            <span>${h.wind_speed ? Math.round(h.wind_speed) + ' km/h' : 'N/A'} ${h.wind_direction || ''}</span>
+                                        </div>
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">☁️</span>
+                                            <span>${h.cloud_cover !== null && h.cloud_cover !== undefined ? (Math.round(h.cloud_cover / 12.5) + '/8' + (h.cloud_base && h.cloud_base > 0 ? ' alt ' + Math.round(h.cloud_base * 3.28084).toLocaleString() + ' ft' : '')) : 'N/A'}</span>
+                                        </div>
+                                        ${h.freezing_altitude ? `
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">❄️</span>
+                                            <span>${Math.round(h.freezing_altitude)}m</span>
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${isAggregated && day.sources_used ? `
+                    <div class="sources">
+                        Sources: ${day.sources_used.join(', ')}
+                    </div>
+                    ` : ''}
+                    ${!isAggregated && day.source ? `
+                    <div class="source-badge">${day.source}</div>
+                    ` : ''}
+                </div>
+            `;
+
+            return card;
+        }
+
+        function formatCloudCover(cloudPercent, cloudBase) {
+            // Convert percentage to octas (eighths)
+            const octas = Math.round(cloudPercent / 12.5);
+            let result = `${octas}/8`;
+
+            // Add altitude only if real data available (not estimated)
+            if (cloudBase && cloudBase > 0) {
+                const altitudeFt = Math.round(cloudBase * 3.28084);
+                result += ` alt ${altitudeFt.toLocaleString()} ft`;
+            }
+
+            return result;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            if (date.toDateString() === today.toDateString()) {
+                return 'Today';
+            } else if (date.toDateString() === tomorrow.toDateString()) {
+                return 'Tomorrow';
+            } else {
+                return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+        }
+
+        function getConfidenceClass(confidence) {
+            if (confidence >= 80) return 'high';
+            if (confidence >= 60) return 'medium';
+            return 'low';
+        }
+
+        function toggleRawData() {
+            const rawDataDiv = document.getElementById('raw-data');
+            const toggleBtn = document.querySelector('.toggle-btn');
+
+            if (rawDataDiv.style.display === 'none') {
+                // Show raw data
+                rawDataDiv.style.display = 'block';
+                toggleBtn.textContent = '📋 Hide Individual Sources';
+
+                // Populate raw data
+                rawDataDiv.innerHTML = '<h3>Individual Source Forecasts</h3>';
+                const sources = {};
+
+                // Group by source
+                forecastData.raw.forEach(day => {
+                    if (!sources[day.source]) {
+                        sources[day.source] = [];
+                    }
+                    sources[day.source].push(day);
+                });
+
+                // Display each source
+                Object.entries(sources).forEach(([source, days]) => {
+                    const sourceSection = document.createElement('div');
+                    sourceSection.className = 'source-section';
+                    sourceSection.innerHTML = `<h4>${source}</h4><div class="forecast-days"></div>`;
+
+                    const daysContainer = sourceSection.querySelector('.forecast-days');
+                    days.forEach(day => {
+                        const dayCard = createDayCard(day, false);
+                        daysContainer.appendChild(dayCard);
+                    });
+
+                    rawDataDiv.appendChild(sourceSection);
+                });
+            } else {
+                rawDataDiv.style.display = 'none';
+                toggleBtn.textContent = '📋 Show Individual Sources';
+            }
+        }
+
+        function toggleHourly(button) {
+            const hourlyData = button.nextElementSibling;
+            if (hourlyData.style.display === 'none') {
+                hourlyData.style.display = 'block';
+                button.textContent = '📊 Hide 3-Hourly Forecast ▲';
+            } else {
+                hourlyData.style.display = 'none';
+                button.textContent = '📊 Show 3-Hourly Forecast ▼';
+            }
+        }
+
+        function showError(message) {
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+
+            loadingDiv.style.display = 'none';
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = message;
+        }
+    </script>
+</body>
+</html>
