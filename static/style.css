@@ -49,6 +49,12 @@ header h1 {
     flex-wrap: wrap;
 }
 
+.location-search-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
 .location-selector {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -61,7 +67,6 @@ header h1 {
     gap: 12px;
     box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
     transition: all 0.3s ease;
-    cursor: pointer;
     min-height: 50px;
     position: relative;
     -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
@@ -87,30 +92,69 @@ header h1 {
     filter: grayscale(0);
 }
 
-.location-selector select {
+.location-search-input {
     border: none;
     padding: 0;
     font-size: 1.15em;
     background: transparent;
-    cursor: pointer;
+    cursor: text;
     outline: none;
     color: #667eea;
     font-weight: 700;
     min-height: 35px;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
     transition: all 0.2s ease;
     flex: 1;
     text-align: center;
     letter-spacing: 0.3px;
+    width: 100%;
 }
 
-.location-selector select option {
-    background: white;
+.location-search-input::placeholder {
+    color: rgba(102, 126, 234, 0.5);
+}
+
+.location-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.location-option {
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s ease;
     color: #667eea;
     font-weight: 600;
-    padding: 10px;
+}
+
+.location-option:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.location-option:first-child {
+    border-radius: 18px 18px 0 0;
+}
+
+.location-option:last-child {
+    border-radius: 0 0 18px 18px;
+}
+
+.location-option.favorite {
+    color: #ffc107;
+}
+
+.location-option.favorite::before {
+    content: "⭐ ";
 }
 
 .dropdown-arrow {
@@ -121,6 +165,89 @@ header h1 {
     user-select: none;
     -webkit-user-select: none;
     line-height: 1;
+}
+
+.favorites-btn {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    cursor: pointer;
+    min-height: 50px;
+    min-width: 50px;
+    font-size: 1.3em;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
+}
+
+.favorites-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.45);
+    transform: translateY(-3px) scale(1.05);
+}
+
+.favorites-btn:active {
+    transform: translateY(-1px);
+}
+
+.favorites-btn.active {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    border-color: rgba(255, 193, 7, 0.5);
+}
+
+.favorites-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
+
+.favorites-panel h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.favorites-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.favorite-item {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.favorite-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.favorite-remove {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.favorite-remove:hover {
+    opacity: 1;
 }
 
 .refresh-btn {
@@ -314,6 +441,37 @@ header h1 {
     margin-bottom: 20px;
     font-size: 0.9em;
     opacity: 0.9;
+}
+
+.weather-alerts {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(255, 107, 107, 0.4);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.9; }
+}
+
+.alert-icon {
+    font-size: 1.5em;
+    margin-right: 10px;
+}
+
+.alert-title {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.alert-description {
+    font-size: 1em;
+    line-height: 1.5;
 }
 
 .forecast-section {

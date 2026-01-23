@@ -14,25 +14,40 @@
         </header>
 
         <div class="controls">
-            <div class="location-selector">
-                <span class="location-icon">📍</span>
-                <select id="location" onchange="loadForecast()">
-                    <option value="Tel Aviv" selected>Tel Aviv</option>
-                    <option value="Jerusalem">Jerusalem</option>
-                    <option value="Haifa">Haifa</option>
-                    <option value="Beer Sheva">Beer Sheva</option>
-                </select>
-                <span class="dropdown-arrow">▼</span>
+            <div class="location-search-wrapper">
+                <div class="location-selector">
+                    <span class="location-icon">📍</span>
+                    <input type="text"
+                           id="location-search"
+                           class="location-search-input"
+                           placeholder="Search location..."
+                           autocomplete="off">
+                    <span class="dropdown-arrow">🔍</span>
+                </div>
+                <div id="location-dropdown" class="location-dropdown" style="display: none;"></div>
             </div>
+            <button id="favorites-btn" class="favorites-btn" onclick="toggleFavorites()">
+                <span class="favorites-icon">⭐</span>
+            </button>
             <button id="refresh-btn" class="refresh-btn" onclick="refreshForecast()">
                 <span class="refresh-icon">🔄</span>
                 <span class="refresh-text">Refresh</span>
             </button>
         </div>
 
+        <div id="favorites-panel" class="favorites-panel" style="display: none;">
+            <h3>Favorite Locations</h3>
+            <div id="favorites-list" class="favorites-list"></div>
+        </div>
+
+        <div id="weather-alerts" class="weather-alerts" style="display: none;"></div>
+
         <div id="loading" class="loading" style="display: none;">
             <div class="spinner"></div>
             <p>Fetching forecasts from all sources...</p>
+            <div class="loading-progress">
+                <div id="progress-sources" class="progress-sources"></div>
+            </div>
         </div>
 
         <div id="error" class="error" style="display: none;"></div>
@@ -61,6 +76,15 @@
         let currentDayIndex = 0;
         let touchStartX = 0;
         let touchEndX = 0;
+        let currentLocation = 'Tel Aviv';
+        let favorites = JSON.parse(localStorage.getItem('weatherFavorites') || '[]');
+
+        // Available cities (can be expanded)
+        const availableCities = [
+            'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva',
+            'Eilat', 'Tiberias', 'Netanya', 'Ashdod', 'Rishon LeZion',
+            'Petah Tikva', 'Herzliya', 'Acre', 'Nazareth', 'Safed'
+        ];
 
         // Weather icon mapping based on conditions
         function getWeatherIcon(condition, cloudCover) {
@@ -105,6 +129,113 @@
             }
 
             return desc;
+        }
+
+        // City search autocomplete
+        function setupCitySearch() {
+            const searchInput = document.getElementById('location-search');
+            const dropdown = document.getElementById('location-dropdown');
+
+            searchInput.value = currentLocation;
+
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+
+                if (query.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                const matches = availableCities.filter(city =>
+                    city.toLowerCase().includes(query)
+                );
+
+                if (matches.length > 0) {
+                    dropdown.innerHTML = matches.map(city => `
+                        <div class="location-option ${favorites.includes(city) ? 'favorite' : ''}"
+                             onclick="selectLocation('${city}')">
+                            ${city}
+                        </div>
+                    `).join('');
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            searchInput.addEventListener('focus', function() {
+                if (this.value.length > 0) {
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.location-search-wrapper')) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        function selectLocation(city) {
+            currentLocation = city;
+            document.getElementById('location-search').value = city;
+            document.getElementById('location-dropdown').style.display = 'none';
+            loadForecast();
+        }
+
+        // Favorites functionality
+        function toggleFavorites() {
+            const panel = document.getElementById('favorites-panel');
+            const btn = document.getElementById('favorites-btn');
+
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                btn.classList.add('active');
+                updateFavoritesList();
+            } else {
+                panel.style.display = 'none';
+                btn.classList.remove('active');
+            }
+        }
+
+        function updateFavoritesList() {
+            const list = document.getElementById('favorites-list');
+
+            if (favorites.length === 0) {
+                list.innerHTML = '<p style="color: #666;">No favorite locations yet. Add your current location to favorites!</p>';
+                return;
+            }
+
+            list.innerHTML = favorites.map(city => `
+                <div class="favorite-item" onclick="selectLocation('${city}')">
+                    <span>📍 ${city}</span>
+                    <span class="favorite-remove" onclick="event.stopPropagation(); removeFavorite('${city}')">✕</span>
+                </div>
+            `).join('');
+
+            // Add current location button
+            if (!favorites.includes(currentLocation)) {
+                list.innerHTML += `
+                    <div class="favorite-item" onclick="addFavorite('${currentLocation}')" style="background: rgba(102, 126, 234, 0.2); color: #667eea;">
+                        <span>➕ Add ${currentLocation}</span>
+                    </div>
+                `;
+            }
+        }
+
+        function addFavorite(city) {
+            if (!favorites.includes(city)) {
+                favorites.push(city);
+                localStorage.setItem('weatherFavorites', JSON.stringify(favorites));
+                updateFavoritesList();
+            }
+        }
+
+        function removeFavorite(city) {
+            favorites = favorites.filter(f => f !== city);
+            localStorage.setItem('weatherFavorites', JSON.stringify(favorites));
+            updateFavoritesList();
         }
 
         // Refresh forecast function
@@ -156,29 +287,8 @@
 
         // Load forecast on page load
         window.onload = function() {
+            setupCitySearch();
             loadForecast();
-
-            // Make the entire location selector clickable
-            const locationSelector = document.querySelector('.location-selector');
-            const locationSelect = document.getElementById('location');
-            const dropdownArrow = document.querySelector('.dropdown-arrow');
-
-            locationSelector.addEventListener('click', function(e) {
-                // Only trigger if not already clicking on the select itself
-                if (e.target !== locationSelect) {
-                    locationSelect.focus();
-                    locationSelect.click();
-                }
-            });
-
-            // Rotate arrow on focus/blur
-            locationSelect.addEventListener('focus', function() {
-                dropdownArrow.style.transform = 'rotate(180deg)';
-            });
-
-            locationSelect.addEventListener('blur', function() {
-                dropdownArrow.style.transform = 'rotate(0deg)';
-            });
 
             // Add touch swipe support for mobile
             const forecastContainer = document.getElementById('aggregated-days');
@@ -211,16 +321,83 @@
             }
         }
 
+        // Check for weather alerts
+        function checkWeatherAlerts(data) {
+            const alertsDiv = document.getElementById('weather-alerts');
+            const alerts = [];
+
+            data.aggregated.forEach(day => {
+                // Check for high winds
+                if (day.wind_speed && day.wind_speed > 50) {
+                    alerts.push({
+                        icon: '💨',
+                        title: 'High Wind Warning',
+                        description: `Strong winds expected on ${formatDate(day.date)} (${Math.round(day.wind_speed)} km/h)`
+                    });
+                }
+
+                // Check for heavy rain probability
+                if (day.precipitation_prob && day.precipitation_prob > 80) {
+                    alerts.push({
+                        icon: '🌧️',
+                        title: 'Heavy Rain Expected',
+                        description: `High chance of rain on ${formatDate(day.date)} (${Math.round(day.precipitation_prob)}%)`
+                    });
+                }
+
+                // Check for extreme temperatures
+                if (day.temp_high && day.temp_high > 35) {
+                    alerts.push({
+                        icon: '🌡️',
+                        title: 'Heat Warning',
+                        description: `Very hot temperatures on ${formatDate(day.date)} (${Math.round(day.temp_high)}°C)`
+                    });
+                }
+
+                if (day.temp_low && day.temp_low < 5) {
+                    alerts.push({
+                        icon: '❄️',
+                        title: 'Cold Warning',
+                        description: `Cold temperatures on ${formatDate(day.date)} (${Math.round(day.temp_low)}°C)`
+                    });
+                }
+            });
+
+            if (alerts.length > 0) {
+                alertsDiv.innerHTML = alerts.map(alert => `
+                    <div style="margin-bottom: ${alerts.length > 1 ? '10px' : '0'};">
+                        <span class="alert-icon">${alert.icon}</span>
+                        <span class="alert-title">${alert.title}:</span>
+                        <span class="alert-description">${alert.description}</span>
+                    </div>
+                `).join('');
+                alertsDiv.style.display = 'block';
+            } else {
+                alertsDiv.style.display = 'none';
+            }
+        }
+
+        // Update loading progress
+        function updateLoadingProgress() {
+            const progressDiv = document.getElementById('progress-sources');
+            const sources = ['Open-Meteo', '7Timer', 'OpenWeather', 'WeatherAPI'];
+
+            progressDiv.innerHTML = sources.map(source => `
+                <span class="source-status loading">${source}</span>
+            `).join('');
+        }
+
         async function loadForecast(forceRefresh = false) {
-            const location = document.getElementById('location').value;
+            const location = currentLocation;
             const loadingDiv = document.getElementById('loading');
             const errorDiv = document.getElementById('error');
             const forecastContainer = document.getElementById('forecast-container');
 
-            // Show loading
+            // Show loading with progress
             loadingDiv.style.display = 'block';
             errorDiv.style.display = 'none';
             forecastContainer.style.display = 'none';
+            updateLoadingProgress();
 
             try {
                 // Initial request
@@ -280,6 +457,9 @@
             updateTime.textContent = new Date().toLocaleString();
 
             forecastData = data;
+
+            // Check for weather alerts
+            checkWeatherAlerts(data);
 
             // Create day tabs
             createDayTabs(data.aggregated);

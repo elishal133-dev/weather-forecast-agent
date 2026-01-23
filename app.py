@@ -23,7 +23,11 @@ def add_security_headers(response):
     return response
 
 # Whitelist of allowed locations (security: prevent injection)
-ALLOWED_LOCATIONS = ['Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva']
+ALLOWED_LOCATIONS = [
+    'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva',
+    'Eilat', 'Tiberias', 'Netanya', 'Ashdod', 'Rishon LeZion',
+    'Petah Tikva', 'Herzliya', 'Acre', 'Nazareth', 'Safed'
+]
 
 # Global cache for forecasts with thread safety
 forecast_cache = {
