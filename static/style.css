@@ -44,32 +44,39 @@ header h1 {
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 15px;
     margin-bottom: 30px;
+    flex-wrap: wrap;
 }
 
 .location-selector {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: 14px 28px;
     border-radius: 30px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
     transition: all 0.3s ease;
     cursor: pointer;
     min-height: 50px;
     position: relative;
-    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
 }
 
 .location-selector:hover {
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.45);
     transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 .location-selector:active {
     transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 25px rgba(31, 38, 135, 0.35);
 }
 
 .location-icon {
@@ -77,6 +84,7 @@ header h1 {
     line-height: 1;
     user-select: none;
     -webkit-user-select: none;
+    filter: grayscale(0);
 }
 
 .location-selector select {
@@ -86,7 +94,7 @@ header h1 {
     background: transparent;
     cursor: pointer;
     outline: none;
-    color: white;
+    color: #667eea;
     font-weight: 700;
     min-height: 35px;
     -webkit-appearance: none;
@@ -99,20 +107,138 @@ header h1 {
 }
 
 .location-selector select option {
-    background: #667eea;
-    color: white;
+    background: white;
+    color: #667eea;
     font-weight: 600;
     padding: 10px;
 }
 
 .dropdown-arrow {
     font-size: 0.7em;
-    color: white;
-    opacity: 0.9;
+    color: #667eea;
+    opacity: 0.8;
     transition: transform 0.3s ease;
     user-select: none;
     -webkit-user-select: none;
     line-height: 1;
+}
+
+.refresh-btn {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 24px;
+    border-radius: 30px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    cursor: pointer;
+    min-height: 50px;
+    font-size: 1em;
+    font-weight: 600;
+    color: #667eea;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
+}
+
+.refresh-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.45);
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.refresh-btn:active {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 25px rgba(31, 38, 135, 0.35);
+}
+
+.refresh-btn.refreshing .refresh-icon {
+    animation: spin 1s linear infinite;
+}
+
+.day-tabs {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 15px 0;
+    margin-bottom: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.day-tabs::-webkit-scrollbar {
+    height: 6px;
+}
+
+.day-tabs::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.day-tabs::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+}
+
+.day-tab {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 12px 20px;
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: 100px;
+    text-align: center;
+}
+
+.day-tab:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+.day-tab.active {
+    background: rgba(255, 255, 255, 0.95);
+    color: #667eea;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 15px rgba(31, 38, 135, 0.3);
+}
+
+.weather-icon {
+    font-size: 3em;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.weather-description {
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.precipitation-bar {
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 10px;
+    height: 8px;
+    margin: 8px 0;
+    overflow: hidden;
+}
+
+.precipitation-fill {
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
 }
 
 .loading {
@@ -121,6 +247,41 @@ header h1 {
     background: white;
     border-radius: 20px;
     box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.loading-progress {
+    margin-top: 20px;
+}
+
+.progress-sources {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.source-status {
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.source-status.loading {
+    background: #ffc107;
+    color: #333;
+}
+
+.source-status.success {
+    background: #4caf50;
+    color: white;
+}
+
+.source-status.error {
+    background: #f44336;
+    color: white;
 }
 
 .spinner {
@@ -373,9 +534,32 @@ header h1 {
 }
 
 .hourly-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 10px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.3) rgba(0, 0, 0, 0.05);
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+}
+
+.hourly-grid::-webkit-scrollbar {
+    height: 8px;
+}
+
+.hourly-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+.hourly-grid::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 10px;
+}
+
+.hourly-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
 }
 
 .hourly-item {
@@ -383,6 +567,9 @@ header h1 {
     border-radius: 10px;
     padding: 12px;
     border: 1px solid rgba(0,0,0,0.1);
+    min-width: 140px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
 }
 
 .hourly-time {
@@ -447,8 +634,24 @@ header h1 {
     }
 
     .hourly-grid {
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
         gap: 8px;
+    }
+
+    .hourly-item {
+        min-width: 110px;
+    }
+
+    .refresh-btn {
+        padding: 12px 20px;
+    }
+
+    .day-tabs {
+        padding: 10px 0;
+    }
+
+    .day-tab {
+        min-width: 90px;
+        padding: 10px 16px;
     }
 
     .hourly-item {
@@ -511,13 +714,26 @@ header h1 {
         font-size: 1.4em;
     }
 
-    .hourly-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .hourly-item {
+        min-width: 100px;
     }
 
     .hourly-toggle {
         font-size: 0.9em;
         padding: 8px 12px;
+    }
+
+    .controls {
+        flex-direction: column;
+    }
+
+    .refresh-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .location-selector {
+        width: 100%;
     }
 
     .forecast-section {

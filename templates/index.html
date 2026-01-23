@@ -24,6 +24,10 @@
                 </select>
                 <span class="dropdown-arrow">▼</span>
             </div>
+            <button id="refresh-btn" class="refresh-btn" onclick="refreshForecast()">
+                <span class="refresh-icon">🔄</span>
+                <span class="refresh-text">Refresh</span>
+            </button>
         </div>
 
         <div id="loading" class="loading" style="display: none;">
@@ -36,6 +40,8 @@
         <div id="last-updated" class="last-updated" style="display: none;">
             Last updated: <span id="update-time"></span>
         </div>
+
+        <div id="day-tabs" class="day-tabs" style="display: none;"></div>
 
         <div id="forecast-container">
             <div id="aggregated-forecast" class="forecast-section">
@@ -52,6 +58,101 @@
 
     <script>
         let forecastData = null;
+        let currentDayIndex = 0;
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        // Weather icon mapping based on conditions
+        function getWeatherIcon(condition, cloudCover) {
+            if (!condition) {
+                // Fallback to cloud cover if no condition provided
+                if (cloudCover !== null && cloudCover !== undefined) {
+                    if (cloudCover < 20) return '☀️';
+                    if (cloudCover < 50) return '🌤️';
+                    if (cloudCover < 75) return '⛅';
+                    return '☁️';
+                }
+                return '🌤️';
+            }
+
+            const cond = condition.toLowerCase();
+            if (cond.includes('clear') || cond.includes('sunny')) return '☀️';
+            if (cond.includes('partly') || cond.includes('partial')) return '🌤️';
+            if (cond.includes('cloud')) return '☁️';
+            if (cond.includes('rain') || cond.includes('shower')) return '🌧️';
+            if (cond.includes('thunder') || cond.includes('storm')) return '⛈️';
+            if (cond.includes('snow') || cond.includes('blizzard')) return '❄️';
+            if (cond.includes('fog') || cond.includes('mist')) return '🌫️';
+            if (cond.includes('wind')) return '💨';
+            return '🌤️';
+        }
+
+        // Get weather description
+        function getWeatherDescription(condition, cloudCover, precipProb) {
+            if (condition) return condition;
+
+            // Generate description from data
+            let desc = '';
+            if (cloudCover < 20) desc = 'Clear';
+            else if (cloudCover < 50) desc = 'Partly Cloudy';
+            else if (cloudCover < 75) desc = 'Mostly Cloudy';
+            else desc = 'Overcast';
+
+            if (precipProb && precipProb > 30) {
+                desc += ' with rain likely';
+            } else if (precipProb && precipProb > 10) {
+                desc += ' with possible rain';
+            }
+
+            return desc;
+        }
+
+        // Refresh forecast function
+        async function refreshForecast() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.classList.add('refreshing');
+            refreshBtn.disabled = true;
+
+            // Clear cache by forcing new load
+            forecastData = null;
+            await loadForecast(true);
+
+            refreshBtn.classList.remove('refreshing');
+            refreshBtn.disabled = false;
+        }
+
+        // Create day tabs
+        function createDayTabs(days) {
+            const dayTabsContainer = document.getElementById('day-tabs');
+            dayTabsContainer.innerHTML = '';
+            dayTabsContainer.style.display = 'flex';
+
+            days.forEach((day, index) => {
+                const tab = document.createElement('div');
+                tab.className = 'day-tab' + (index === currentDayIndex ? ' active' : '');
+                tab.textContent = formatDate(day.date);
+                tab.onclick = () => scrollToDay(index);
+                dayTabsContainer.appendChild(tab);
+            });
+        }
+
+        // Scroll to specific day
+        function scrollToDay(index) {
+            currentDayIndex = index;
+            const dayCards = document.querySelectorAll('.day-card');
+            if (dayCards[index]) {
+                dayCards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                updateActiveDayTab();
+            }
+        }
+
+        // Update active day tab
+        function updateActiveDayTab() {
+            const tabs = document.querySelectorAll('.day-tab');
+            tabs.forEach((tab, index) => {
+                tab.classList.toggle('active', index === currentDayIndex);
+            });
+        }
 
         // Load forecast on page load
         window.onload = function() {
@@ -78,9 +179,39 @@
             locationSelect.addEventListener('blur', function() {
                 dropdownArrow.style.transform = 'rotate(0deg)';
             });
+
+            // Add touch swipe support for mobile
+            const forecastContainer = document.getElementById('aggregated-days');
+            forecastContainer.addEventListener('touchstart', handleTouchStart, false);
+            forecastContainer.addEventListener('touchend', handleTouchEnd, false);
         };
 
-        async function loadForecast() {
+        // Touch swipe handlers
+        function handleTouchStart(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }
+
+        function handleTouchEnd(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0 && currentDayIndex < forecastData.aggregated.length - 1) {
+                    // Swipe left - next day
+                    scrollToDay(currentDayIndex + 1);
+                } else if (diff < 0 && currentDayIndex > 0) {
+                    // Swipe right - previous day
+                    scrollToDay(currentDayIndex - 1);
+                }
+            }
+        }
+
+        async function loadForecast(forceRefresh = false) {
             const location = document.getElementById('location').value;
             const loadingDiv = document.getElementById('loading');
             const errorDiv = document.getElementById('error');
@@ -150,6 +281,9 @@
 
             forecastData = data;
 
+            // Create day tabs
+            createDayTabs(data.aggregated);
+
             // Display aggregated forecast
             aggregatedDays.innerHTML = '';
             data.aggregated.forEach(day => {
@@ -170,20 +304,40 @@
             const confidence = isAggregated ? day.confidence : null;
             const confidenceClass = confidence ? getConfidenceClass(confidence) : '';
 
+            // Get weather icon and description
+            const weatherIcon = getWeatherIcon(day.weather_condition, day.cloud_cover);
+            const weatherDesc = getWeatherDescription(day.weather_condition, day.cloud_cover, day.precipitation_prob);
+
             card.innerHTML = `
                 <div class="day-header">
                     <div class="day-date">${formatDate(day.date)}</div>
                     ${isAggregated ? `<div class="confidence ${confidenceClass}">${Math.round(confidence)}% confidence</div>` : ''}
                 </div>
                 <div class="day-body">
+                    <div class="weather-icon">${weatherIcon}</div>
+                    <div class="weather-description">${weatherDesc}</div>
+                    ${day.precipitation_prob !== null && day.precipitation_prob !== undefined ? `
+                        <div class="detail-item" style="flex-direction: column; align-items: flex-start; grid-column: 1 / -1;">
+                            <span style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span class="detail-icon">💧</span>
+                                <span class="detail-label">Rain:</span>
+                                <span>${Math.round(day.precipitation_prob)}%</span>
+                            </span>
+                            <div class="precipitation-bar" style="width: 100%;">
+                                <div class="precipitation-fill" style="width: ${day.precipitation_prob}%;"></div>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div class="temps">
                         <div class="temp-high">
                             <span class="temp-label">High</span>
                             <span class="temp-value">${day.temp_high ? Math.round(day.temp_high) + '°C' : 'N/A'}</span>
+                            ${day.feels_like_high ? `<span class="temp-label" style="font-size: 0.8em; margin-top: 4px;">Feels ${Math.round(day.feels_like_high)}°C</span>` : ''}
                         </div>
                         <div class="temp-low">
                             <span class="temp-label">Low</span>
                             <span class="temp-value">${day.temp_low ? Math.round(day.temp_low) + '°C' : 'N/A'}</span>
+                            ${day.feels_like_low ? `<span class="temp-label" style="font-size: 0.8em; margin-top: 4px;">Feels ${Math.round(day.feels_like_low)}°C</span>` : ''}
                         </div>
                     </div>
                     <div class="details">
@@ -192,6 +346,13 @@
                             <span class="detail-label">Wind:</span>
                             <span>${day.wind_speed ? Math.round(day.wind_speed) + ' km/h' : 'N/A'} ${day.wind_direction || ''}</span>
                         </div>
+                        ${day.humidity !== null && day.humidity !== undefined ? `
+                        <div class="detail-item">
+                            <span class="detail-icon">💧</span>
+                            <span class="detail-label">Humidity:</span>
+                            <span>${Math.round(day.humidity)}%</span>
+                        </div>
+                        ` : ''}
                         <div class="detail-item">
                             <span class="detail-icon">☁️</span>
                             <span class="detail-label">Cloud Cover:</span>
@@ -240,10 +401,29 @@
                                 ${day.hourly.map(h => `
                                     <div class="hourly-item">
                                         <div class="hourly-time">${h.time}</div>
+                                        ${h.weather_condition ? `<div style="text-align: center; font-size: 1.5em; margin: 5px 0;">${getWeatherIcon(h.weather_condition, h.cloud_cover)}</div>` : ''}
                                         <div class="hourly-detail">
                                             <span class="hourly-icon">🌡️</span>
                                             <span>${h.temperature ? Math.round(h.temperature) + '°C' : 'N/A'}</span>
                                         </div>
+                                        ${h.feels_like ? `
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">🤚</span>
+                                            <span>Feels ${Math.round(h.feels_like)}°C</span>
+                                        </div>
+                                        ` : ''}
+                                        ${h.precipitation_prob !== null && h.precipitation_prob !== undefined ? `
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">💧</span>
+                                            <span>${Math.round(h.precipitation_prob)}% rain</span>
+                                        </div>
+                                        ` : ''}
+                                        ${h.humidity !== null && h.humidity !== undefined ? `
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">💦</span>
+                                            <span>${Math.round(h.humidity)}% humid</span>
+                                        </div>
+                                        ` : ''}
                                         <div class="hourly-detail">
                                             <span class="hourly-icon">💨</span>
                                             <span>${h.wind_speed ? Math.round(h.wind_speed) + ' km/h' : 'N/A'} ${h.wind_direction || ''}</span>
