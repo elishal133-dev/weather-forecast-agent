@@ -55,6 +55,18 @@
         // Load forecast on page load
         window.onload = function() {
             loadForecast();
+
+            // Make the entire location selector clickable
+            const locationSelector = document.querySelector('.location-selector');
+            const locationSelect = document.getElementById('location');
+
+            locationSelector.addEventListener('click', function(e) {
+                // Only trigger if not already clicking on the select itself
+                if (e.target !== locationSelect) {
+                    locationSelect.focus();
+                    locationSelect.click();
+                }
+            });
         };
 
         async function loadForecast() {
