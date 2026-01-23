@@ -16,14 +16,13 @@
         <div class="controls">
             <div class="location-selector">
                 <label for="location">Location:</label>
-                <select id="location">
+                <select id="location" onchange="loadForecast()">
                     <option value="Tel Aviv" selected>Tel Aviv</option>
                     <option value="Jerusalem">Jerusalem</option>
                     <option value="Haifa">Haifa</option>
                     <option value="Beer Sheva">Beer Sheva</option>
                 </select>
             </div>
-            <button id="refresh-btn" onclick="loadForecast()">🔄 Refresh</button>
         </div>
 
         <div id="loading" class="loading" style="display: none;">
