@@ -48,56 +48,71 @@ header h1 {
 }
 
 .location-selector {
-    background: white;
-    padding: 12px 25px;
-    border-radius: 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 14px 28px;
+    border-radius: 30px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    gap: 12px;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     transition: all 0.3s ease;
     cursor: pointer;
-    min-height: 44px;  /* Minimum tap target size for mobile */
-    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
+    min-height: 50px;
+    position: relative;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .location-selector:hover {
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    transform: translateY(-3px);
 }
 
 .location-selector:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
-.location-selector label {
-    font-weight: 600;
-    color: #333;
-    cursor: pointer;
+.location-icon {
+    font-size: 1.4em;
+    line-height: 1;
     user-select: none;
     -webkit-user-select: none;
 }
 
 .location-selector select {
     border: none;
-    padding: 8px 15px;
-    font-size: 1.1em;
+    padding: 0;
+    font-size: 1.15em;
     background: transparent;
     cursor: pointer;
     outline: none;
-    color: #667eea;
-    font-weight: 600;
+    color: white;
+    font-weight: 700;
     min-height: 35px;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     transition: all 0.2s ease;
     flex: 1;
+    text-align: center;
+    letter-spacing: 0.3px;
 }
 
-.location-selector select:hover {
-    color: #5568d3;
+.location-selector select option {
+    background: #667eea;
+    color: white;
+    font-weight: 600;
+    padding: 10px;
+}
+
+.dropdown-arrow {
+    font-size: 0.7em;
+    color: white;
+    opacity: 0.9;
+    transition: transform 0.3s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    line-height: 1;
 }
 
 .loading {
@@ -471,9 +486,21 @@ header h1 {
     }
 
     .location-selector {
-        padding: 10px 20px;
-        flex-direction: column;
-        text-align: center;
+        padding: 12px 24px;
+        gap: 10px;
+        min-height: 48px;
+    }
+
+    .location-icon {
+        font-size: 1.3em;
+    }
+
+    .location-selector select {
+        font-size: 1em;
+    }
+
+    .dropdown-arrow {
+        font-size: 0.65em;
     }
 
     .day-card {

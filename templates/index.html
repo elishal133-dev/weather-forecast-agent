@@ -15,13 +15,14 @@
 
         <div class="controls">
             <div class="location-selector">
-                <label for="location">Location:</label>
+                <span class="location-icon">📍</span>
                 <select id="location" onchange="loadForecast()">
                     <option value="Tel Aviv" selected>Tel Aviv</option>
                     <option value="Jerusalem">Jerusalem</option>
                     <option value="Haifa">Haifa</option>
                     <option value="Beer Sheva">Beer Sheva</option>
                 </select>
+                <span class="dropdown-arrow">▼</span>
             </div>
         </div>
 
@@ -59,6 +60,7 @@
             // Make the entire location selector clickable
             const locationSelector = document.querySelector('.location-selector');
             const locationSelect = document.getElementById('location');
+            const dropdownArrow = document.querySelector('.dropdown-arrow');
 
             locationSelector.addEventListener('click', function(e) {
                 // Only trigger if not already clicking on the select itself
@@ -66,6 +68,15 @@
                     locationSelect.focus();
                     locationSelect.click();
                 }
+            });
+
+            // Rotate arrow on focus/blur
+            locationSelect.addEventListener('focus', function() {
+                dropdownArrow.style.transform = 'rotate(180deg)';
+            });
+
+            locationSelect.addEventListener('blur', function() {
+                dropdownArrow.style.transform = 'rotate(0deg)';
             });
         };
 
