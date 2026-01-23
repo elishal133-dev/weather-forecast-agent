@@ -5,22 +5,41 @@ from aggregator import ForecastAggregator
 from config import DEFAULT_LOCATION, OPENWEATHER_API_KEY, WEATHERAPI_API_KEY
 import threading
 import time
+import os
 
 app = Flask(__name__)
 
-# Global cache for forecasts
+# Security: Add secret key for session management
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+
+# Security: Add security headers
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
+# Whitelist of allowed locations (security: prevent injection)
+ALLOWED_LOCATIONS = ['Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva']
+
+# Global cache for forecasts with thread safety
 forecast_cache = {
     'data': None,
     'location': None,
     'timestamp': None,
     'loading': False
 }
+cache_lock = threading.Lock()  # Thread safety
 
 def fetch_forecasts(location):
     """Fetch forecasts from all sources in separate threads"""
     global forecast_cache
 
-    forecast_cache['loading'] = True
+    with cache_lock:
+        forecast_cache['loading'] = True
 
     # Initialize API-based scrapers
     # Open-Meteo and 7Timer are always available (no API key needed)
@@ -112,14 +131,15 @@ def fetch_forecasts(location):
                     print(f"Adjusting daily min for {date_key}: {agg_forecast.temp_low}°C -> {hourly_min}°C")
                     agg_forecast.temp_low = hourly_min
 
-    # Update cache
-    forecast_cache['data'] = {
-        'aggregated': [f.to_dict() for f in aggregated],
-        'raw': [f.to_dict() for f in all_forecasts]
-    }
-    forecast_cache['location'] = location
-    forecast_cache['timestamp'] = time.time()
-    forecast_cache['loading'] = False
+    # Update cache with thread safety
+    with cache_lock:
+        forecast_cache['data'] = {
+            'aggregated': [f.to_dict() for f in aggregated],
+            'raw': [f.to_dict() for f in all_forecasts]
+        }
+        forecast_cache['location'] = location
+        forecast_cache['timestamp'] = time.time()
+        forecast_cache['loading'] = False
 
 @app.route('/')
 def index():
@@ -131,19 +151,32 @@ def get_forecast():
     """API endpoint to get forecast data"""
     location = request.args.get('location', DEFAULT_LOCATION)
 
+    # Security: Validate location input (whitelist)
+    if location not in ALLOWED_LOCATIONS:
+        return jsonify({
+            'status': 'error',
+            'message': f'Invalid location. Allowed locations: {", ".join(ALLOWED_LOCATIONS)}'
+        }), 400
+
     # Check if we have cached data for this location (valid for 30 minutes)
-    if (forecast_cache['data'] is not None and
-        forecast_cache['location'] == location and
-        forecast_cache['timestamp'] is not None and
-        time.time() - forecast_cache['timestamp'] < 1800):
+    with cache_lock:
+        cached_data = forecast_cache['data']
+        cached_location = forecast_cache['location']
+        cached_timestamp = forecast_cache['timestamp']
+        is_loading = forecast_cache['loading']
+
+    if (cached_data is not None and
+        cached_location == location and
+        cached_timestamp is not None and
+        time.time() - cached_timestamp < 1800):
         return jsonify({
             'status': 'success',
-            'data': forecast_cache['data'],
+            'data': cached_data,
             'cached': True
         })
 
     # Check if already loading
-    if forecast_cache['loading']:
+    if is_loading:
         return jsonify({
             'status': 'loading',
             'message': 'Forecast data is being fetched...'
@@ -161,15 +194,19 @@ def get_forecast():
 @app.route('/api/status')
 def get_status():
     """Check if forecast data is ready"""
-    if forecast_cache['loading']:
+    with cache_lock:
+        is_loading = forecast_cache['loading']
+        cached_data = forecast_cache['data']
+
+    if is_loading:
         return jsonify({
             'status': 'loading',
             'message': 'Still fetching data...'
         })
-    elif forecast_cache['data'] is not None:
+    elif cached_data is not None:
         return jsonify({
             'status': 'ready',
-            'data': forecast_cache['data']
+            'data': cached_data
         })
     else:
         return jsonify({
@@ -180,5 +217,15 @@ def get_status():
 if __name__ == '__main__':
     print("Starting Weather Forecast Aggregator...")
     print(f"Default location: {DEFAULT_LOCATION}")
-    print("Dashboard will be available at http://localhost:5000")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+
+    # Security: Only enable debug mode in development
+    is_development = os.environ.get('FLASK_ENV') == 'development'
+
+    if is_development:
+        print("WARNING: Running in DEVELOPMENT mode")
+        print("Dashboard will be available at http://localhost:5000")
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    else:
+        print("Running in PRODUCTION mode (debug disabled)")
+        port = int(os.environ.get('PORT', 5000))
+        app.run(debug=False, host='0.0.0.0', port=port)
