@@ -22,11 +22,29 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
-# Whitelist of allowed locations (security: prevent injection)
+# Allowed locations - major cities worldwide
 ALLOWED_LOCATIONS = [
-    'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva',
-    'Eilat', 'Tiberias', 'Netanya', 'Ashdod', 'Rishon LeZion',
-    'Petah Tikva', 'Herzliya', 'Acre', 'Nazareth', 'Safed'
+    # Israel
+    'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva', 'Eilat', 'Tiberias', 'Netanya', 'Ashdod',
+    # North America
+    'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego',
+    'Dallas', 'San Jose', 'Austin', 'Jacksonville', 'Fort Worth', 'Columbus', 'Charlotte', 'San Francisco',
+    'Seattle', 'Denver', 'Boston', 'Portland', 'Las Vegas', 'Miami', 'Atlanta', 'Toronto', 'Vancouver',
+    'Montreal', 'Calgary', 'Ottawa', 'Mexico City', 'Guadalajara', 'Monterrey',
+    # Europe
+    'London', 'Paris', 'Berlin', 'Madrid', 'Rome', 'Barcelona', 'Vienna', 'Hamburg', 'Warsaw', 'Budapest',
+    'Munich', 'Milan', 'Prague', 'Copenhagen', 'Stockholm', 'Brussels', 'Amsterdam', 'Athens', 'Lisbon',
+    'Dublin', 'Oslo', 'Helsinki', 'Zurich', 'Geneva', 'Lyon', 'Marseille', 'Manchester', 'Birmingham',
+    # Asia
+    'Tokyo', 'Shanghai', 'Beijing', 'Mumbai', 'Delhi', 'Seoul', 'Jakarta', 'Manila', 'Bangkok', 'Singapore',
+    'Hong Kong', 'Bangalore', 'Kuala Lumpur', 'Taipei', 'Dubai', 'Abu Dhabi', 'Riyadh', 'Doha', 'Istanbul',
+    'Tehran', 'Baghdad', 'Karachi', 'Lahore', 'Dhaka', 'Hanoi', 'Ho Chi Minh City',
+    # Australia & Oceania
+    'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Auckland', 'Wellington',
+    # South America
+    'São Paulo', 'Rio de Janeiro', 'Buenos Aires', 'Lima', 'Bogotá', 'Santiago', 'Caracas', 'Montevideo',
+    # Africa
+    'Cairo', 'Lagos', 'Kinshasa', 'Johannesburg', 'Nairobi', 'Casablanca', 'Accra', 'Cape Town', 'Addis Ababa'
 ]
 
 # Global cache for forecasts with thread safety

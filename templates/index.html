@@ -77,17 +77,33 @@
     <script>
         let forecastData = null;
         let currentDayIndex = 0;
-        let touchStartX = 0;
-        let touchEndX = 0;
         let currentLocation = 'Tel Aviv';
         let favorites = JSON.parse(localStorage.getItem('weatherFavorites') || '[]');
 
-        // Available cities (can be expanded)
+        // Available cities worldwide (major cities)
         const availableCities = [
-            'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva',
-            'Eilat', 'Tiberias', 'Netanya', 'Ashdod', 'Rishon LeZion',
-            'Petah Tikva', 'Herzliya', 'Acre', 'Nazareth', 'Safed'
-        ];
+            // Israel
+            'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva', 'Eilat', 'Tiberias', 'Netanya', 'Ashdod',
+            // North America
+            'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego',
+            'Dallas', 'San Jose', 'Austin', 'Jacksonville', 'Fort Worth', 'Columbus', 'Charlotte', 'San Francisco',
+            'Seattle', 'Denver', 'Boston', 'Portland', 'Las Vegas', 'Miami', 'Atlanta', 'Toronto', 'Vancouver',
+            'Montreal', 'Calgary', 'Ottawa', 'Mexico City', 'Guadalajara', 'Monterrey',
+            // Europe
+            'London', 'Paris', 'Berlin', 'Madrid', 'Rome', 'Barcelona', 'Vienna', 'Hamburg', 'Warsaw', 'Budapest',
+            'Munich', 'Milan', 'Prague', 'Copenhagen', 'Stockholm', 'Brussels', 'Amsterdam', 'Athens', 'Lisbon',
+            'Dublin', 'Oslo', 'Helsinki', 'Zurich', 'Geneva', 'Lyon', 'Marseille', 'Manchester', 'Birmingham',
+            // Asia
+            'Tokyo', 'Shanghai', 'Beijing', 'Mumbai', 'Delhi', 'Seoul', 'Jakarta', 'Manila', 'Bangkok', 'Singapore',
+            'Hong Kong', 'Bangalore', 'Kuala Lumpur', 'Taipei', 'Dubai', 'Abu Dhabi', 'Riyadh', 'Doha', 'Istanbul',
+            'Tehran', 'Baghdad', 'Karachi', 'Lahore', 'Dhaka', 'Hanoi', 'Ho Chi Minh City',
+            // Australia & Oceania
+            'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Auckland', 'Wellington',
+            // South America
+            'São Paulo', 'Rio de Janeiro', 'Buenos Aires', 'Lima', 'Bogotá', 'Santiago', 'Caracas', 'Montevideo',
+            // Africa
+            'Cairo', 'Lagos', 'Kinshasa', 'Johannesburg', 'Nairobi', 'Casablanca', 'Accra', 'Cape Town', 'Addis Ababa'
+        ].sort();
 
         // Weather icon mapping based on conditions
         function getWeatherIcon(condition, cloudCover) {
@@ -292,37 +308,7 @@
         window.onload = function() {
             setupCitySearch();
             loadForecast();
-
-            // Add touch swipe support for mobile
-            const forecastContainer = document.getElementById('aggregated-days');
-            forecastContainer.addEventListener('touchstart', handleTouchStart, false);
-            forecastContainer.addEventListener('touchend', handleTouchEnd, false);
         };
-
-        // Touch swipe handlers
-        function handleTouchStart(e) {
-            touchStartX = e.changedTouches[0].screenX;
-        }
-
-        function handleTouchEnd(e) {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        }
-
-        function handleSwipe() {
-            const swipeThreshold = 50;
-            const diff = touchStartX - touchEndX;
-
-            if (Math.abs(diff) > swipeThreshold) {
-                if (diff > 0 && currentDayIndex < forecastData.aggregated.length - 1) {
-                    // Swipe left - next day
-                    scrollToDay(currentDayIndex + 1);
-                } else if (diff < 0 && currentDayIndex > 0) {
-                    // Swipe right - previous day
-                    scrollToDay(currentDayIndex - 1);
-                }
-            }
-        }
 
         // Check for weather alerts
         function checkWeatherAlerts(data) {
