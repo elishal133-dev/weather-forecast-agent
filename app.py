@@ -23,7 +23,11 @@ def add_security_headers(response):
     return response
 
 # Whitelist of allowed locations (security: prevent injection)
-ALLOWED_LOCATIONS = ['Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva']
+ALLOWED_LOCATIONS = [
+    'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva',
+    'Eilat', 'Tiberias', 'Netanya', 'Ashdod', 'Rishon LeZion',
+    'Petah Tikva', 'Herzliya', 'Acre', 'Nazareth', 'Safed'
+]
 
 # Global cache for forecasts with thread safety
 forecast_cache = {
@@ -144,7 +148,18 @@ def fetch_forecasts(location):
 @app.route('/')
 def index():
     """Main dashboard page"""
-    return render_template('index.html', default_location=DEFAULT_LOCATION)
+    # Add timestamp for cache busting
+    import time
+    cache_bust = str(int(time.time()))
+
+    response = app.make_response(render_template('index.html',
+                                                 default_location=DEFAULT_LOCATION,
+                                                 cache_bust=cache_bust))
+    # Force no-cache for HTML to ensure users get latest version
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/api/forecast')
 def get_forecast():
@@ -213,6 +228,16 @@ def get_status():
             'status': 'empty',
             'message': 'No data available'
         })
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Serve static files with no-cache headers"""
+    from flask import send_from_directory
+    response = send_from_directory('static', filename)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 if __name__ == '__main__':
     print("Starting Weather Forecast Aggregator...")

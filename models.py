@@ -10,6 +10,11 @@ class ForecastData:
     date: datetime
     temp_high: Optional[float] = None
     temp_low: Optional[float] = None
+    feels_like_high: Optional[float] = None
+    feels_like_low: Optional[float] = None
+    precipitation_prob: Optional[float] = None  # Percentage (0-100)
+    humidity: Optional[float] = None  # Percentage (0-100)
+    weather_condition: Optional[str] = None  # e.g., "Clear", "Cloudy", "Rain"
     wind_speed: Optional[float] = None
     wind_direction: Optional[str] = None
     cloud_cover: Optional[float] = None  # Percentage (0-100)
@@ -33,6 +38,11 @@ class ForecastData:
             'date': self.date.strftime('%Y-%m-%d'),
             'temp_high': self.temp_high,
             'temp_low': self.temp_low,
+            'feels_like_high': self.feels_like_high,
+            'feels_like_low': self.feels_like_low,
+            'precipitation_prob': self.precipitation_prob,
+            'humidity': self.humidity,
+            'weather_condition': self.weather_condition,
             'wind_speed': self.wind_speed,
             'wind_direction': self.wind_direction,
             'cloud_cover': self.cloud_cover,
@@ -51,6 +61,10 @@ class HourlyForecast:
     """Hourly weather forecast data"""
     time: datetime  # Specific hour
     temperature: Optional[float] = None
+    feels_like: Optional[float] = None
+    precipitation_prob: Optional[float] = None
+    humidity: Optional[float] = None
+    weather_condition: Optional[str] = None
     wind_speed: Optional[float] = None
     wind_direction: Optional[str] = None
     cloud_cover: Optional[float] = None
@@ -61,6 +75,10 @@ class HourlyForecast:
         return {
             'time': self.time.strftime('%H:%M'),
             'temperature': round(self.temperature, 1) if self.temperature else None,
+            'feels_like': round(self.feels_like, 1) if self.feels_like else None,
+            'precipitation_prob': round(self.precipitation_prob, 1) if self.precipitation_prob else None,
+            'humidity': round(self.humidity, 1) if self.humidity else None,
+            'weather_condition': self.weather_condition,
             'wind_speed': round(self.wind_speed, 1) if self.wind_speed else None,
             'wind_direction': self.wind_direction,
             'cloud_cover': round(self.cloud_cover, 1) if self.cloud_cover else None,
@@ -75,18 +93,23 @@ class AggregatedForecast:
     date: datetime
     temp_high: float
     temp_low: float
-    wind_speed: float
-    wind_direction: str
-    cloud_cover: float
-    cloud_min_level: Optional[float]
-    freezing_altitude: Optional[float]
-    sunrise: time
-    sunset: time
-    moonrise: time
-    moonset: time
-    moon_illumination: float
-    confidence: float  # 0-100%
-    sources_used: list
+    feels_like_high: Optional[float] = None
+    feels_like_low: Optional[float] = None
+    precipitation_prob: Optional[float] = None
+    humidity: Optional[float] = None
+    weather_condition: Optional[str] = None
+    wind_speed: float = 0
+    wind_direction: str = ""
+    cloud_cover: float = 0
+    cloud_min_level: Optional[float] = None
+    freezing_altitude: Optional[float] = None
+    sunrise: time = None
+    sunset: time = None
+    moonrise: time = None
+    moonset: time = None
+    moon_illumination: float = 0
+    confidence: float = 0  # 0-100%
+    sources_used: list = None
     hourly_data: Optional[List[HourlyForecast]] = None  # 3-hourly forecasts
 
     def to_dict(self):
@@ -95,18 +118,23 @@ class AggregatedForecast:
             'date': self.date.strftime('%Y-%m-%d'),
             'temp_high': round(self.temp_high, 1),
             'temp_low': round(self.temp_low, 1),
+            'feels_like_high': round(self.feels_like_high, 1) if self.feels_like_high else None,
+            'feels_like_low': round(self.feels_like_low, 1) if self.feels_like_low else None,
+            'precipitation_prob': round(self.precipitation_prob, 1) if self.precipitation_prob else None,
+            'humidity': round(self.humidity, 1) if self.humidity else None,
+            'weather_condition': self.weather_condition,
             'wind_speed': round(self.wind_speed, 1),
             'wind_direction': self.wind_direction,
             'cloud_cover': round(self.cloud_cover, 1),
             'cloud_min_level': round(self.cloud_min_level, 1) if self.cloud_min_level else None,
             'freezing_altitude': round(self.freezing_altitude, 1) if self.freezing_altitude else None,
-            'sunrise': self.sunrise.strftime('%H:%M'),
-            'sunset': self.sunset.strftime('%H:%M'),
-            'moonrise': self.moonrise.strftime('%H:%M'),
-            'moonset': self.moonset.strftime('%H:%M'),
+            'sunrise': self.sunrise.strftime('%H:%M') if self.sunrise else None,
+            'sunset': self.sunset.strftime('%H:%M') if self.sunset else None,
+            'moonrise': self.moonrise.strftime('%H:%M') if self.moonrise else None,
+            'moonset': self.moonset.strftime('%H:%M') if self.moonset else None,
             'moon_illumination': round(self.moon_illumination, 1),
             'confidence': round(self.confidence, 1),
-            'sources_used': self.sources_used
+            'sources_used': self.sources_used if self.sources_used else []
         }
         if self.hourly_data:
             result['hourly'] = [h.to_dict() for h in self.hourly_data]

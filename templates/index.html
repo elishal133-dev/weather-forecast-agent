@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Weather Forecast Aggregator</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ cache_bust }}">
 </head>
 <body>
     <div class="container">
@@ -14,20 +17,40 @@
         </header>
 
         <div class="controls">
-            <div class="location-selector">
-                <label for="location">Location:</label>
-                <select id="location" onchange="loadForecast()">
-                    <option value="Tel Aviv" selected>Tel Aviv</option>
-                    <option value="Jerusalem">Jerusalem</option>
-                    <option value="Haifa">Haifa</option>
-                    <option value="Beer Sheva">Beer Sheva</option>
-                </select>
+            <div class="location-search-wrapper">
+                <div class="location-selector">
+                    <span class="location-icon">📍</span>
+                    <input type="text"
+                           id="location-search"
+                           class="location-search-input"
+                           placeholder="Search location..."
+                           autocomplete="off">
+                    <span class="dropdown-arrow">🔍</span>
+                </div>
+                <div id="location-dropdown" class="location-dropdown" style="display: none;"></div>
             </div>
+            <button id="favorites-btn" class="favorites-btn" onclick="toggleFavorites()">
+                <span class="favorites-icon">⭐</span>
+            </button>
+            <button id="refresh-btn" class="refresh-btn" onclick="refreshForecast()">
+                <span class="refresh-icon">🔄</span>
+                <span class="refresh-text">Refresh</span>
+            </button>
         </div>
+
+        <div id="favorites-panel" class="favorites-panel" style="display: none;">
+            <h3>Favorite Locations</h3>
+            <div id="favorites-list" class="favorites-list"></div>
+        </div>
+
+        <div id="weather-alerts" class="weather-alerts" style="display: none;"></div>
 
         <div id="loading" class="loading" style="display: none;">
             <div class="spinner"></div>
             <p>Fetching forecasts from all sources...</p>
+            <div class="loading-progress">
+                <div id="progress-sources" class="progress-sources"></div>
+            </div>
         </div>
 
         <div id="error" class="error" style="display: none;"></div>
@@ -35,6 +58,8 @@
         <div id="last-updated" class="last-updated" style="display: none;">
             Last updated: <span id="update-time"></span>
         </div>
+
+        <div id="day-tabs" class="day-tabs" style="display: none;"></div>
 
         <div id="forecast-container">
             <div id="aggregated-forecast" class="forecast-section">
@@ -51,22 +76,331 @@
 
     <script>
         let forecastData = null;
+        let currentDayIndex = 0;
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let currentLocation = 'Tel Aviv';
+        let favorites = JSON.parse(localStorage.getItem('weatherFavorites') || '[]');
+
+        // Available cities (can be expanded)
+        const availableCities = [
+            'Tel Aviv', 'Jerusalem', 'Haifa', 'Beer Sheva',
+            'Eilat', 'Tiberias', 'Netanya', 'Ashdod', 'Rishon LeZion',
+            'Petah Tikva', 'Herzliya', 'Acre', 'Nazareth', 'Safed'
+        ];
+
+        // Weather icon mapping based on conditions
+        function getWeatherIcon(condition, cloudCover) {
+            if (!condition) {
+                // Fallback to cloud cover if no condition provided
+                if (cloudCover !== null && cloudCover !== undefined) {
+                    if (cloudCover < 20) return '☀️';
+                    if (cloudCover < 50) return '🌤️';
+                    if (cloudCover < 75) return '⛅';
+                    return '☁️';
+                }
+                return '🌤️';
+            }
+
+            const cond = condition.toLowerCase();
+            if (cond.includes('clear') || cond.includes('sunny')) return '☀️';
+            if (cond.includes('partly') || cond.includes('partial')) return '🌤️';
+            if (cond.includes('cloud')) return '☁️';
+            if (cond.includes('rain') || cond.includes('shower')) return '🌧️';
+            if (cond.includes('thunder') || cond.includes('storm')) return '⛈️';
+            if (cond.includes('snow') || cond.includes('blizzard')) return '❄️';
+            if (cond.includes('fog') || cond.includes('mist')) return '🌫️';
+            if (cond.includes('wind')) return '💨';
+            return '🌤️';
+        }
+
+        // Get weather description
+        function getWeatherDescription(condition, cloudCover, precipProb) {
+            if (condition) return condition;
+
+            // Generate description from data
+            let desc = '';
+            if (cloudCover < 20) desc = 'Clear';
+            else if (cloudCover < 50) desc = 'Partly Cloudy';
+            else if (cloudCover < 75) desc = 'Mostly Cloudy';
+            else desc = 'Overcast';
+
+            if (precipProb && precipProb > 30) {
+                desc += ' with rain likely';
+            } else if (precipProb && precipProb > 10) {
+                desc += ' with possible rain';
+            }
+
+            return desc;
+        }
+
+        // City search autocomplete
+        function setupCitySearch() {
+            const searchInput = document.getElementById('location-search');
+            const dropdown = document.getElementById('location-dropdown');
+
+            searchInput.value = currentLocation;
+
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+
+                if (query.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                const matches = availableCities.filter(city =>
+                    city.toLowerCase().includes(query)
+                );
+
+                if (matches.length > 0) {
+                    dropdown.innerHTML = matches.map(city => `
+                        <div class="location-option ${favorites.includes(city) ? 'favorite' : ''}"
+                             onclick="selectLocation('${city}')">
+                            ${city}
+                        </div>
+                    `).join('');
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            searchInput.addEventListener('focus', function() {
+                if (this.value.length > 0) {
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.location-search-wrapper')) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        function selectLocation(city) {
+            currentLocation = city;
+            document.getElementById('location-search').value = city;
+            document.getElementById('location-dropdown').style.display = 'none';
+            loadForecast();
+        }
+
+        // Favorites functionality
+        function toggleFavorites() {
+            const panel = document.getElementById('favorites-panel');
+            const btn = document.getElementById('favorites-btn');
+
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                btn.classList.add('active');
+                updateFavoritesList();
+            } else {
+                panel.style.display = 'none';
+                btn.classList.remove('active');
+            }
+        }
+
+        function updateFavoritesList() {
+            const list = document.getElementById('favorites-list');
+
+            if (favorites.length === 0) {
+                list.innerHTML = '<p style="color: #666;">No favorite locations yet. Add your current location to favorites!</p>';
+                return;
+            }
+
+            list.innerHTML = favorites.map(city => `
+                <div class="favorite-item" onclick="selectLocation('${city}')">
+                    <span>📍 ${city}</span>
+                    <span class="favorite-remove" onclick="event.stopPropagation(); removeFavorite('${city}')">✕</span>
+                </div>
+            `).join('');
+
+            // Add current location button
+            if (!favorites.includes(currentLocation)) {
+                list.innerHTML += `
+                    <div class="favorite-item" onclick="addFavorite('${currentLocation}')" style="background: rgba(102, 126, 234, 0.2); color: #667eea;">
+                        <span>➕ Add ${currentLocation}</span>
+                    </div>
+                `;
+            }
+        }
+
+        function addFavorite(city) {
+            if (!favorites.includes(city)) {
+                favorites.push(city);
+                localStorage.setItem('weatherFavorites', JSON.stringify(favorites));
+                updateFavoritesList();
+            }
+        }
+
+        function removeFavorite(city) {
+            favorites = favorites.filter(f => f !== city);
+            localStorage.setItem('weatherFavorites', JSON.stringify(favorites));
+            updateFavoritesList();
+        }
+
+        // Refresh forecast function
+        async function refreshForecast() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.classList.add('refreshing');
+            refreshBtn.disabled = true;
+
+            // Clear cache by forcing new load
+            forecastData = null;
+            await loadForecast(true);
+
+            refreshBtn.classList.remove('refreshing');
+            refreshBtn.disabled = false;
+        }
+
+        // Create day tabs
+        function createDayTabs(days) {
+            const dayTabsContainer = document.getElementById('day-tabs');
+            dayTabsContainer.innerHTML = '';
+            dayTabsContainer.style.display = 'flex';
+
+            days.forEach((day, index) => {
+                const tab = document.createElement('div');
+                tab.className = 'day-tab' + (index === currentDayIndex ? ' active' : '');
+                tab.textContent = formatDate(day.date);
+                tab.onclick = () => scrollToDay(index);
+                dayTabsContainer.appendChild(tab);
+            });
+        }
+
+        // Scroll to specific day
+        function scrollToDay(index) {
+            currentDayIndex = index;
+            const dayCards = document.querySelectorAll('.day-card');
+            if (dayCards[index]) {
+                dayCards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                updateActiveDayTab();
+            }
+        }
+
+        // Update active day tab
+        function updateActiveDayTab() {
+            const tabs = document.querySelectorAll('.day-tab');
+            tabs.forEach((tab, index) => {
+                tab.classList.toggle('active', index === currentDayIndex);
+            });
+        }
 
         // Load forecast on page load
         window.onload = function() {
+            setupCitySearch();
             loadForecast();
+
+            // Add touch swipe support for mobile
+            const forecastContainer = document.getElementById('aggregated-days');
+            forecastContainer.addEventListener('touchstart', handleTouchStart, false);
+            forecastContainer.addEventListener('touchend', handleTouchEnd, false);
         };
 
-        async function loadForecast() {
-            const location = document.getElementById('location').value;
+        // Touch swipe handlers
+        function handleTouchStart(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }
+
+        function handleTouchEnd(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0 && currentDayIndex < forecastData.aggregated.length - 1) {
+                    // Swipe left - next day
+                    scrollToDay(currentDayIndex + 1);
+                } else if (diff < 0 && currentDayIndex > 0) {
+                    // Swipe right - previous day
+                    scrollToDay(currentDayIndex - 1);
+                }
+            }
+        }
+
+        // Check for weather alerts
+        function checkWeatherAlerts(data) {
+            const alertsDiv = document.getElementById('weather-alerts');
+            const alerts = [];
+
+            data.aggregated.forEach(day => {
+                // Check for high winds
+                if (day.wind_speed && day.wind_speed > 50) {
+                    alerts.push({
+                        icon: '💨',
+                        title: 'High Wind Warning',
+                        description: `Strong winds expected on ${formatDate(day.date)} (${Math.round(day.wind_speed)} km/h)`
+                    });
+                }
+
+                // Check for heavy rain probability
+                if (day.precipitation_prob && day.precipitation_prob > 80) {
+                    alerts.push({
+                        icon: '🌧️',
+                        title: 'Heavy Rain Expected',
+                        description: `High chance of rain on ${formatDate(day.date)} (${Math.round(day.precipitation_prob)}%)`
+                    });
+                }
+
+                // Check for extreme temperatures
+                if (day.temp_high && day.temp_high > 35) {
+                    alerts.push({
+                        icon: '🌡️',
+                        title: 'Heat Warning',
+                        description: `Very hot temperatures on ${formatDate(day.date)} (${Math.round(day.temp_high)}°C)`
+                    });
+                }
+
+                if (day.temp_low && day.temp_low < 5) {
+                    alerts.push({
+                        icon: '❄️',
+                        title: 'Cold Warning',
+                        description: `Cold temperatures on ${formatDate(day.date)} (${Math.round(day.temp_low)}°C)`
+                    });
+                }
+            });
+
+            if (alerts.length > 0) {
+                alertsDiv.innerHTML = alerts.map(alert => `
+                    <div style="margin-bottom: ${alerts.length > 1 ? '10px' : '0'};">
+                        <span class="alert-icon">${alert.icon}</span>
+                        <span class="alert-title">${alert.title}:</span>
+                        <span class="alert-description">${alert.description}</span>
+                    </div>
+                `).join('');
+                alertsDiv.style.display = 'block';
+            } else {
+                alertsDiv.style.display = 'none';
+            }
+        }
+
+        // Update loading progress
+        function updateLoadingProgress() {
+            const progressDiv = document.getElementById('progress-sources');
+            const sources = ['Open-Meteo', '7Timer', 'OpenWeather', 'WeatherAPI'];
+
+            progressDiv.innerHTML = sources.map(source => `
+                <span class="source-status loading">${source}</span>
+            `).join('');
+        }
+
+        async function loadForecast(forceRefresh = false) {
+            const location = currentLocation;
             const loadingDiv = document.getElementById('loading');
             const errorDiv = document.getElementById('error');
             const forecastContainer = document.getElementById('forecast-container');
 
-            // Show loading
+            // Show loading with progress
             loadingDiv.style.display = 'block';
             errorDiv.style.display = 'none';
             forecastContainer.style.display = 'none';
+            updateLoadingProgress();
 
             try {
                 // Initial request
@@ -127,6 +461,12 @@
 
             forecastData = data;
 
+            // Check for weather alerts
+            checkWeatherAlerts(data);
+
+            // Create day tabs
+            createDayTabs(data.aggregated);
+
             // Display aggregated forecast
             aggregatedDays.innerHTML = '';
             data.aggregated.forEach(day => {
@@ -147,20 +487,40 @@
             const confidence = isAggregated ? day.confidence : null;
             const confidenceClass = confidence ? getConfidenceClass(confidence) : '';
 
+            // Get weather icon and description
+            const weatherIcon = getWeatherIcon(day.weather_condition, day.cloud_cover);
+            const weatherDesc = getWeatherDescription(day.weather_condition, day.cloud_cover, day.precipitation_prob);
+
             card.innerHTML = `
                 <div class="day-header">
                     <div class="day-date">${formatDate(day.date)}</div>
                     ${isAggregated ? `<div class="confidence ${confidenceClass}">${Math.round(confidence)}% confidence</div>` : ''}
                 </div>
                 <div class="day-body">
+                    <div class="weather-icon">${weatherIcon}</div>
+                    <div class="weather-description">${weatherDesc}</div>
+                    ${day.precipitation_prob !== null && day.precipitation_prob !== undefined ? `
+                        <div class="detail-item" style="flex-direction: column; align-items: flex-start; grid-column: 1 / -1;">
+                            <span style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span class="detail-icon">💧</span>
+                                <span class="detail-label">Rain:</span>
+                                <span>${Math.round(day.precipitation_prob)}%</span>
+                            </span>
+                            <div class="precipitation-bar" style="width: 100%;">
+                                <div class="precipitation-fill" style="width: ${day.precipitation_prob}%;"></div>
+                            </div>
+                        </div>
+                    ` : ''}
                     <div class="temps">
                         <div class="temp-high">
                             <span class="temp-label">High</span>
                             <span class="temp-value">${day.temp_high ? Math.round(day.temp_high) + '°C' : 'N/A'}</span>
+                            ${day.feels_like_high ? `<span class="temp-label" style="font-size: 0.8em; margin-top: 4px;">Feels ${Math.round(day.feels_like_high)}°C</span>` : ''}
                         </div>
                         <div class="temp-low">
                             <span class="temp-label">Low</span>
                             <span class="temp-value">${day.temp_low ? Math.round(day.temp_low) + '°C' : 'N/A'}</span>
+                            ${day.feels_like_low ? `<span class="temp-label" style="font-size: 0.8em; margin-top: 4px;">Feels ${Math.round(day.feels_like_low)}°C</span>` : ''}
                         </div>
                     </div>
                     <div class="details">
@@ -169,6 +529,13 @@
                             <span class="detail-label">Wind:</span>
                             <span>${day.wind_speed ? Math.round(day.wind_speed) + ' km/h' : 'N/A'} ${day.wind_direction || ''}</span>
                         </div>
+                        ${day.humidity !== null && day.humidity !== undefined ? `
+                        <div class="detail-item">
+                            <span class="detail-icon">💧</span>
+                            <span class="detail-label">Humidity:</span>
+                            <span>${Math.round(day.humidity)}%</span>
+                        </div>
+                        ` : ''}
                         <div class="detail-item">
                             <span class="detail-icon">☁️</span>
                             <span class="detail-label">Cloud Cover:</span>
@@ -217,10 +584,29 @@
                                 ${day.hourly.map(h => `
                                     <div class="hourly-item">
                                         <div class="hourly-time">${h.time}</div>
+                                        ${h.weather_condition ? `<div style="text-align: center; font-size: 1.5em; margin: 5px 0;">${getWeatherIcon(h.weather_condition, h.cloud_cover)}</div>` : ''}
                                         <div class="hourly-detail">
                                             <span class="hourly-icon">🌡️</span>
                                             <span>${h.temperature ? Math.round(h.temperature) + '°C' : 'N/A'}</span>
                                         </div>
+                                        ${h.feels_like ? `
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">🤚</span>
+                                            <span>Feels ${Math.round(h.feels_like)}°C</span>
+                                        </div>
+                                        ` : ''}
+                                        ${h.precipitation_prob !== null && h.precipitation_prob !== undefined ? `
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">💧</span>
+                                            <span>${Math.round(h.precipitation_prob)}% rain</span>
+                                        </div>
+                                        ` : ''}
+                                        ${h.humidity !== null && h.humidity !== undefined ? `
+                                        <div class="hourly-detail">
+                                            <span class="hourly-icon">💦</span>
+                                            <span>${Math.round(h.humidity)}% humid</span>
+                                        </div>
+                                        ` : ''}
                                         <div class="hourly-detail">
                                             <span class="hourly-icon">💨</span>
                                             <span>${h.wind_speed ? Math.round(h.wind_speed) + ' km/h' : 'N/A'} ${h.wind_direction || ''}</span>

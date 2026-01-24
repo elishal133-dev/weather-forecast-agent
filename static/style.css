@@ -44,48 +44,328 @@ header h1 {
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 15px;
     margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.location-search-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
 }
 
 .location-selector {
-    background: white;
-    padding: 12px 25px;
-    border-radius: 25px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 28px;
+    border-radius: 30px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     display: flex;
     align-items: center;
-    gap: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    gap: 12px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
     transition: all 0.3s ease;
+    min-height: 50px;
+    position: relative;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
 }
 
 .location-selector:hover {
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.45);
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.location-selector:active {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 25px rgba(31, 38, 135, 0.35);
+}
+
+.location-icon {
+    font-size: 1.4em;
+    line-height: 1;
+    user-select: none;
+    -webkit-user-select: none;
+    filter: grayscale(0);
+}
+
+.location-search-input {
+    border: none;
+    padding: 0;
+    font-size: 1.15em;
+    background: transparent;
+    cursor: text;
+    outline: none;
+    color: #667eea;
+    font-weight: 700;
+    min-height: 35px;
+    transition: all 0.2s ease;
+    flex: 1;
+    text-align: center;
+    letter-spacing: 0.3px;
+    width: 100%;
+}
+
+.location-search-input::placeholder {
+    color: rgba(102, 126, 234, 0.5);
+}
+
+.location-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.location-option {
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    color: #667eea;
+    font-weight: 600;
+}
+
+.location-option:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.location-option:first-child {
+    border-radius: 18px 18px 0 0;
+}
+
+.location-option:last-child {
+    border-radius: 0 0 18px 18px;
+}
+
+.location-option.favorite {
+    color: #ffc107;
+}
+
+.location-option.favorite::before {
+    content: "⭐ ";
+}
+
+.dropdown-arrow {
+    font-size: 0.7em;
+    color: #667eea;
+    opacity: 0.8;
+    transition: transform 0.3s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    line-height: 1;
+}
+
+.favorites-btn {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    cursor: pointer;
+    min-height: 50px;
+    min-width: 50px;
+    font-size: 1.3em;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
+}
+
+.favorites-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.45);
+    transform: translateY(-3px) scale(1.05);
+}
+
+.favorites-btn:active {
+    transform: translateY(-1px);
+}
+
+.favorites-btn.active {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    border-color: rgba(255, 193, 7, 0.5);
+}
+
+.favorites-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
+
+.favorites-panel h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.favorites-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.favorite-item {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.favorite-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.favorite-remove {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.favorite-remove:hover {
+    opacity: 1;
+}
+
+.refresh-btn {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 24px;
+    border-radius: 30px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    cursor: pointer;
+    min-height: 50px;
+    font-size: 1em;
+    font-weight: 600;
+    color: #667eea;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
+}
+
+.refresh-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.45);
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.refresh-btn:active {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 25px rgba(31, 38, 135, 0.35);
+}
+
+.refresh-btn.refreshing .refresh-icon {
+    animation: spin 1s linear infinite;
+}
+
+.day-tabs {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 15px 0;
+    margin-bottom: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.day-tabs::-webkit-scrollbar {
+    height: 6px;
+}
+
+.day-tabs::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.day-tabs::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+}
+
+.day-tab {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 12px 20px;
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: 100px;
+    text-align: center;
+}
+
+.day-tab:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
     transform: translateY(-2px);
 }
 
-.location-selector label {
+.day-tab.active {
+    background: rgba(255, 255, 255, 0.95);
+    color: #667eea;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 15px rgba(31, 38, 135, 0.3);
+}
+
+.weather-icon {
+    font-size: 3em;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.weather-description {
+    text-align: center;
+    font-size: 1.1em;
     font-weight: 600;
     color: #333;
+    margin-bottom: 10px;
 }
 
-.location-selector select {
-    border: none;
-    padding: 8px 15px;
-    font-size: 1.1em;
-    background: transparent;
-    cursor: pointer;
-    outline: none;
-    color: #667eea;
-    font-weight: 600;
-    min-height: 35px;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    transition: all 0.2s ease;
+.precipitation-bar {
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 10px;
+    height: 8px;
+    margin: 8px 0;
+    overflow: hidden;
 }
 
-.location-selector select:hover {
-    color: #5568d3;
+.precipitation-fill {
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
 }
 
 .loading {
@@ -94,6 +374,41 @@ header h1 {
     background: white;
     border-radius: 20px;
     box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.loading-progress {
+    margin-top: 20px;
+}
+
+.progress-sources {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.source-status {
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.source-status.loading {
+    background: #ffc107;
+    color: #333;
+}
+
+.source-status.success {
+    background: #4caf50;
+    color: white;
+}
+
+.source-status.error {
+    background: #f44336;
+    color: white;
 }
 
 .spinner {
@@ -126,6 +441,37 @@ header h1 {
     margin-bottom: 20px;
     font-size: 0.9em;
     opacity: 0.9;
+}
+
+.weather-alerts {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(255, 107, 107, 0.4);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.9; }
+}
+
+.alert-icon {
+    font-size: 1.5em;
+    margin-right: 10px;
+}
+
+.alert-title {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.alert-description {
+    font-size: 1em;
+    line-height: 1.5;
 }
 
 .forecast-section {
@@ -346,9 +692,32 @@ header h1 {
 }
 
 .hourly-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 10px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.3) rgba(0, 0, 0, 0.05);
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+}
+
+.hourly-grid::-webkit-scrollbar {
+    height: 8px;
+}
+
+.hourly-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+.hourly-grid::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 10px;
+}
+
+.hourly-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
 }
 
 .hourly-item {
@@ -356,6 +725,9 @@ header h1 {
     border-radius: 10px;
     padding: 12px;
     border: 1px solid rgba(0,0,0,0.1);
+    min-width: 140px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
 }
 
 .hourly-time {
@@ -420,8 +792,24 @@ header h1 {
     }
 
     .hourly-grid {
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
         gap: 8px;
+    }
+
+    .hourly-item {
+        min-width: 110px;
+    }
+
+    .refresh-btn {
+        padding: 12px 20px;
+    }
+
+    .day-tabs {
+        padding: 10px 0;
+    }
+
+    .day-tab {
+        min-width: 90px;
+        padding: 10px 16px;
     }
 
     .hourly-item {
@@ -459,9 +847,21 @@ header h1 {
     }
 
     .location-selector {
-        padding: 10px 20px;
-        flex-direction: column;
-        text-align: center;
+        padding: 12px 24px;
+        gap: 10px;
+        min-height: 48px;
+    }
+
+    .location-icon {
+        font-size: 1.3em;
+    }
+
+    .location-selector select {
+        font-size: 1em;
+    }
+
+    .dropdown-arrow {
+        font-size: 0.65em;
     }
 
     .day-card {
@@ -472,13 +872,26 @@ header h1 {
         font-size: 1.4em;
     }
 
-    .hourly-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .hourly-item {
+        min-width: 100px;
     }
 
     .hourly-toggle {
         font-size: 0.9em;
         padding: 8px 12px;
+    }
+
+    .controls {
+        flex-direction: column;
+    }
+
+    .refresh-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .location-selector {
+        width: 100%;
     }
 
     .forecast-section {
