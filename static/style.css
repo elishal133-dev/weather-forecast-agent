@@ -16,11 +16,15 @@ body {
     min-height: 100vh;
     padding: 20px;
     overflow-x: hidden;
+    position: relative;
+    width: 100%;
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 header {
@@ -290,11 +294,14 @@ header h1 {
     display: flex;
     gap: 10px;
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 15px 0;
     margin-bottom: 20px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
 }
 
 .day-tabs::-webkit-scrollbar {
@@ -492,6 +499,7 @@ header h1 {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
+    overscroll-behavior: contain;
 }
 
 .day-card {
@@ -500,6 +508,8 @@ header h1 {
     padding: 20px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    width: 100%;
 }
 
 .day-card:hover {
@@ -695,11 +705,14 @@ header h1 {
     display: flex;
     gap: 12px;
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 10px 0;
     scrollbar-width: thin;
     scrollbar-color: rgba(102, 126, 234, 0.3) rgba(0, 0, 0, 0.05);
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
 }
 
 .hourly-grid::-webkit-scrollbar {
@@ -773,6 +786,12 @@ header h1 {
 
     .controls {
         flex-direction: column;
+        width: 100%;
+    }
+
+    .location-search-wrapper {
+        width: 100%;
+        max-width: 100%;
     }
 
     .forecast-days {
@@ -785,6 +804,7 @@ header h1 {
 
     .day-card {
         padding: 15px;
+        margin-bottom: 15px;
     }
 
     .temp-value {
@@ -801,10 +821,21 @@ header h1 {
 
     .refresh-btn {
         padding: 12px 20px;
+        width: 100%;
+    }
+
+    .favorites-btn {
+        width: 100%;
+        border-radius: 30px;
+        padding: 14px 24px;
     }
 
     .day-tabs {
         padding: 10px 0;
+        margin-left: -10px;
+        margin-right: -10px;
+        padding-left: 10px;
+        padding-right: 10px;
     }
 
     .day-tab {
@@ -838,6 +869,10 @@ header h1 {
 }
 
 @media (max-width: 480px) {
+    body {
+        padding: 8px;
+    }
+
     header h1 {
         font-size: 1.5em;
     }
@@ -847,17 +882,18 @@ header h1 {
     }
 
     .location-selector {
-        padding: 12px 24px;
-        gap: 10px;
+        padding: 12px 20px;
+        gap: 8px;
         min-height: 48px;
+        width: 100%;
+    }
+
+    .location-search-input {
+        font-size: 1em;
     }
 
     .location-icon {
-        font-size: 1.3em;
-    }
-
-    .location-selector select {
-        font-size: 1em;
+        font-size: 1.2em;
     }
 
     .dropdown-arrow {
@@ -883,6 +919,8 @@ header h1 {
 
     .controls {
         flex-direction: column;
+        gap: 10px;
+        width: 100%;
     }
 
     .refresh-btn {
@@ -890,7 +928,13 @@ header h1 {
         justify-content: center;
     }
 
-    .location-selector {
+    .favorites-btn {
+        width: 100%;
+        border-radius: 30px;
+        padding: 12px 20px;
+    }
+
+    .location-search-wrapper {
         width: 100%;
     }
 
@@ -904,5 +948,13 @@ header h1 {
 
     .detail-item {
         font-size: 0.85em;
+    }
+
+    .weather-icon {
+        font-size: 2.5em;
+    }
+
+    .weather-description {
+        font-size: 1em;
     }
 }
