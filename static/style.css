@@ -496,20 +496,23 @@ header h1 {
 }
 
 .forecast-days {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    display: flex;
+    justify-content: center;
+    align-items: center;
     gap: 20px;
     overscroll-behavior: contain;
+    min-height: 400px;
 }
 
 .day-card {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     border-radius: 15px;
-    padding: 20px;
+    padding: 30px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     overflow: hidden;
     width: 100%;
+    max-width: 600px;
 }
 
 .day-card:hover {
@@ -795,7 +798,7 @@ header h1 {
     }
 
     .forecast-days {
-        grid-template-columns: 1fr;
+        min-height: 300px;
     }
 
     .details {
@@ -803,8 +806,8 @@ header h1 {
     }
 
     .day-card {
-        padding: 15px;
-        margin-bottom: 15px;
+        padding: 20px;
+        max-width: 100%;
     }
 
     .temp-value {
@@ -901,7 +904,12 @@ header h1 {
     }
 
     .day-card {
-        padding: 12px;
+        padding: 15px;
+        max-width: 100%;
+    }
+
+    .forecast-days {
+        min-height: 250px;
     }
 
     .temp-value {

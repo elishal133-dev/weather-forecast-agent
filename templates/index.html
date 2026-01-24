@@ -281,18 +281,29 @@
                 const tab = document.createElement('div');
                 tab.className = 'day-tab' + (index === currentDayIndex ? ' active' : '');
                 tab.textContent = formatDate(day.date);
-                tab.onclick = () => scrollToDay(index);
+                tab.onclick = () => switchToDay(index);
                 dayTabsContainer.appendChild(tab);
             });
         }
 
-        // Scroll to specific day
-        function scrollToDay(index) {
+        // Switch to specific day
+        function switchToDay(index) {
             currentDayIndex = index;
-            const dayCards = document.querySelectorAll('.day-card');
-            if (dayCards[index]) {
-                dayCards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                updateActiveDayTab();
+            updateActiveDayTab();
+            displayCurrentDay();
+        }
+
+        // Display only the current selected day
+        function displayCurrentDay() {
+            if (!forecastData || !forecastData.aggregated) return;
+
+            const aggregatedDays = document.getElementById('aggregated-days');
+            aggregatedDays.innerHTML = '';
+
+            const day = forecastData.aggregated[currentDayIndex];
+            if (day) {
+                const dayCard = createDayCard(day, true);
+                aggregatedDays.appendChild(dayCard);
             }
         }
 
@@ -308,6 +319,17 @@
         window.onload = function() {
             setupCitySearch();
             loadForecast();
+
+            // Add keyboard navigation for day switching
+            document.addEventListener('keydown', function(e) {
+                if (!forecastData || !forecastData.aggregated) return;
+
+                if (e.key === 'ArrowLeft' && currentDayIndex > 0) {
+                    switchToDay(currentDayIndex - 1);
+                } else if (e.key === 'ArrowRight' && currentDayIndex < forecastData.aggregated.length - 1) {
+                    switchToDay(currentDayIndex + 1);
+                }
+            });
         };
 
         // Check for weather alerts
@@ -453,12 +475,8 @@
             // Create day tabs
             createDayTabs(data.aggregated);
 
-            // Display aggregated forecast
-            aggregatedDays.innerHTML = '';
-            data.aggregated.forEach(day => {
-                const dayCard = createDayCard(day, true);
-                aggregatedDays.appendChild(dayCard);
-            });
+            // Display only the current selected day
+            displayCurrentDay();
 
             // Show raw data toggle if we have raw data
             if (data.raw && data.raw.length > 0) {
