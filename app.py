@@ -148,7 +148,12 @@ def fetch_forecasts(location):
 @app.route('/')
 def index():
     """Main dashboard page"""
-    return render_template('index.html', default_location=DEFAULT_LOCATION)
+    response = app.make_response(render_template('index.html', default_location=DEFAULT_LOCATION))
+    # Force no-cache for HTML to ensure users get latest version
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/api/forecast')
 def get_forecast():
