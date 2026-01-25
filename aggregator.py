@@ -1,4 +1,4 @@
-from models import ForecastData, AggregatedForecast
+from models import ForecastData, AggregatedForecast, validate_temperature
 from config import ACCURACY_WEIGHTS, CONSENSUS_THRESHOLD
 from typing import List, Dict, Optional
 from datetime import datetime, time, timedelta
@@ -95,9 +95,21 @@ class ForecastAggregator:
         values = []
         weights = []
 
+        # List of temperature fields that need validation
+        temp_fields = ['temp_high', 'temp_low', 'feels_like_high', 'feels_like_low']
+        is_temp_field = field in temp_fields
+
         for forecast in forecasts:
             value = getattr(forecast, field, None)
             if value is not None:
+                # Validate temperature values to filter out bad data
+                if is_temp_field:
+                    value = validate_temperature(value)
+                    if value is None:
+                        # Skip this invalid temperature value
+                        print(f"Skipping invalid {field} value from {forecast.source}")
+                        continue
+
                 values.append(value)
                 weight = self.weights.get(forecast.source, 0.5)
                 weights.append(weight)

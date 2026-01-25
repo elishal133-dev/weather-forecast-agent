@@ -2,6 +2,20 @@ from dataclasses import dataclass
 from datetime import datetime, time
 from typing import Optional, List
 
+def validate_temperature(temp: Optional[float]) -> Optional[float]:
+    """
+    Validate temperature values to filter out unrealistic data.
+    Returns None if temperature is outside reasonable range:
+    - Below -70°C (coldest ever recorded on Earth: -89.2°C)
+    - Above 65°C (hottest ever recorded: 56.7°C)
+    This helps filter out data scraping errors and display N/A for invalid values.
+    """
+    if temp is None:
+        return None
+    if temp < -70 or temp > 65:
+        return None
+    return temp
+
 @dataclass
 class ForecastData:
     """Data model for weather forecast"""
@@ -36,10 +50,10 @@ class ForecastData:
             'source': self.source,
             'location': self.location,
             'date': self.date.strftime('%Y-%m-%d'),
-            'temp_high': self.temp_high,
-            'temp_low': self.temp_low,
-            'feels_like_high': self.feels_like_high,
-            'feels_like_low': self.feels_like_low,
+            'temp_high': validate_temperature(self.temp_high),
+            'temp_low': validate_temperature(self.temp_low),
+            'feels_like_high': validate_temperature(self.feels_like_high),
+            'feels_like_low': validate_temperature(self.feels_like_low),
             'precipitation_prob': self.precipitation_prob,
             'humidity': self.humidity,
             'weather_condition': self.weather_condition,
@@ -72,10 +86,14 @@ class HourlyForecast:
     freezing_altitude: Optional[float] = None
 
     def to_dict(self):
+        # Validate and round temperature values
+        temp = validate_temperature(self.temperature)
+        feels = validate_temperature(self.feels_like)
+
         return {
             'time': self.time.strftime('%H:%M'),
-            'temperature': round(self.temperature, 1) if self.temperature else None,
-            'feels_like': round(self.feels_like, 1) if self.feels_like else None,
+            'temperature': round(temp, 1) if temp is not None else None,
+            'feels_like': round(feels, 1) if feels is not None else None,
             'precipitation_prob': round(self.precipitation_prob, 1) if self.precipitation_prob else None,
             'humidity': round(self.humidity, 1) if self.humidity else None,
             'weather_condition': self.weather_condition,
@@ -113,13 +131,19 @@ class AggregatedForecast:
     hourly_data: Optional[List[HourlyForecast]] = None  # 3-hourly forecasts
 
     def to_dict(self):
+        # Validate all temperature values
+        temp_high = validate_temperature(self.temp_high)
+        temp_low = validate_temperature(self.temp_low)
+        feels_high = validate_temperature(self.feels_like_high)
+        feels_low = validate_temperature(self.feels_like_low)
+
         result = {
             'location': self.location,
             'date': self.date.strftime('%Y-%m-%d'),
-            'temp_high': round(self.temp_high, 1),
-            'temp_low': round(self.temp_low, 1),
-            'feels_like_high': round(self.feels_like_high, 1) if self.feels_like_high else None,
-            'feels_like_low': round(self.feels_like_low, 1) if self.feels_like_low else None,
+            'temp_high': round(temp_high, 1) if temp_high is not None else None,
+            'temp_low': round(temp_low, 1) if temp_low is not None else None,
+            'feels_like_high': round(feels_high, 1) if feels_high is not None else None,
+            'feels_like_low': round(feels_low, 1) if feels_low is not None else None,
             'precipitation_prob': round(self.precipitation_prob, 1) if self.precipitation_prob else None,
             'humidity': round(self.humidity, 1) if self.humidity else None,
             'weather_condition': self.weather_condition,
