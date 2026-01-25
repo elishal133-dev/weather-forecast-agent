@@ -866,6 +866,583 @@ header h1 {
     .forecast-section h2 {
         font-size: 1.5em;
     }
+
+    /* Support page mobile styles */
+    .support-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .support-hero {
+        padding: 25px 20px;
+    }
+
+    .support-hero h1 {
+        font-size: 1.8em;
+    }
+
+    .support-tagline {
+        font-size: 1.1em;
+    }
+
+    .support-description {
+        font-size: 1em;
+    }
+
+    .quick-donate-amounts {
+        gap: 10px;
+    }
+
+    .quick-donate-btn {
+        padding: 10px 20px;
+        font-size: 1em;
+    }
+
+    .campaigns-section,
+    .groups-support-section,
+    .train-like-pros-section {
+        padding: 20px 15px;
+    }
+
+    .campaigns-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .group-card,
+    .equipment-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .group-content,
+    .equipment-content {
+        text-align: center;
+    }
+
+    .donation-modal-content {
+        padding: 25px 20px;
+    }
+
+    .donation-tier {
+        padding: 12px 15px;
+    }
+}
+
+/* Support Page Styles */
+.support-btn {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 24px;
+    border-radius: 30px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    cursor: pointer;
+    min-height: 50px;
+    font-size: 1em;
+    font-weight: 600;
+    color: #667eea;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.1);
+}
+
+.support-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.45);
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.support-btn:active {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 25px rgba(31, 38, 135, 0.35);
+}
+
+.support-btn.active {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    color: white;
+    border-color: rgba(255, 107, 107, 0.5);
+}
+
+.support-page {
+    margin-bottom: 30px;
+}
+
+.support-page-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Hero Section */
+.support-hero {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+    border-radius: 20px;
+    padding: 40px 30px;
+    margin-bottom: 30px;
+    text-align: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
+
+.support-hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/></svg>') center/cover;
+    opacity: 0.3;
+}
+
+.support-hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+.support-hero h1 {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.support-tagline {
+    font-size: 1.3em;
+    margin-bottom: 10px;
+    opacity: 0.95;
+}
+
+.support-description {
+    font-size: 1.1em;
+    margin-bottom: 25px;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.support-recent-donors {
+    margin-bottom: 20px;
+}
+
+.donors-label {
+    display: block;
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.quick-donate-amounts {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.quick-donate-btn {
+    background: white;
+    color: #667eea;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.quick-donate-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.recent-supporters {
+    background: rgba(255,255,255,0.15);
+    border-radius: 15px;
+    padding: 15px 20px;
+    margin: 20px auto;
+    max-width: 500px;
+    font-size: 0.95em;
+}
+
+.recent-supporters p {
+    margin: 5px 0;
+}
+
+.thank-you-message {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-top: 15px;
+}
+
+/* Campaigns Section */
+.campaigns-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
+
+.campaigns-section h2,
+.groups-support-section h2,
+.train-like-pros-section h2 {
+    color: #667eea;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+}
+
+.campaigns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.campaign-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.campaign-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.campaign-image {
+    height: 150px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4em;
+}
+
+.campaign-image.eurocup-2025::before {
+    content: "🏆 2025";
+    font-size: 0.5em;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.campaign-image.eurocup-2026::before {
+    content: "🏆 2026";
+    font-size: 0.5em;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.campaign-image.afl-2035::before {
+    content: "🏉 2035";
+    font-size: 0.5em;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.campaign-content {
+    padding: 20px;
+}
+
+.campaign-content h3 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1.3em;
+}
+
+.campaign-content p {
+    color: #555;
+    font-size: 0.95em;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.campaign-subtitle {
+    color: #667eea !important;
+    font-weight: 600;
+    font-size: 0.9em !important;
+}
+
+.donate-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+    width: 100%;
+}
+
+.donate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.donate-btn.small {
+    padding: 10px 20px;
+    font-size: 0.9em;
+    width: auto;
+    margin-top: 0;
+}
+
+/* Groups Support Section */
+.groups-support-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
+
+.groups-grid,
+.equipment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.group-card,
+.equipment-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.group-card:hover,
+.equipment-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.group-icon,
+.equipment-icon {
+    font-size: 2.5em;
+    min-width: 60px;
+    text-align: center;
+}
+
+.group-content,
+.equipment-content {
+    flex: 1;
+}
+
+.group-content h3,
+.equipment-content h3 {
+    color: #333;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+
+.group-content p,
+.equipment-content p {
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* Train Like Pros Section */
+.train-like-pros-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
+
+/* Donation Modal */
+.donation-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+}
+
+.donation-modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 450px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.2s ease;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.donation-modal-content h2 {
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 1.5em;
+    padding-right: 30px;
+}
+
+.donation-modal-content > p {
+    color: #666;
+    margin-bottom: 25px;
+}
+
+.donation-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.donation-tier {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.donation-tier:hover {
+    transform: translateX(5px);
+    background: linear-gradient(135deg, #e8ecf4 0%, #d9dfe9 100%);
+}
+
+.donation-tier.selected {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+}
+
+.tier-name {
+    color: #333;
+    font-weight: 600;
+}
+
+.tier-amount {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.custom-amount-section {
+    margin-bottom: 25px;
+}
+
+.custom-amount-section label {
+    display: block;
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.custom-amount-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: #f5f7fa;
+    border-radius: 12px;
+    padding: 5px 15px;
+    border: 2px solid #e4e8f0;
+    transition: border-color 0.3s ease;
+}
+
+.custom-amount-input-wrapper:focus-within {
+    border-color: #667eea;
+}
+
+.currency-symbol {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 1.2em;
+    margin-right: 10px;
+}
+
+.custom-amount-input-wrapper input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 12px 0;
+    font-size: 1.1em;
+    outline: none;
+    color: #333;
+}
+
+.proceed-donation-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.proceed-donation-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.back-to-weather-btn {
+    display: block;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.back-to-weather-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
 }
 
 @media (max-width: 480px) {
@@ -956,5 +1533,34 @@ header h1 {
 
     .weather-description {
         font-size: 1em;
+    }
+
+    /* Support page extra small styles */
+    .support-hero h1 {
+        font-size: 1.5em;
+    }
+
+    .support-tagline {
+        font-size: 1em;
+    }
+
+    .quick-donate-btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+    }
+
+    .campaigns-section h2,
+    .groups-support-section h2,
+    .train-like-pros-section h2 {
+        font-size: 1.4em;
+    }
+
+    .campaign-content h3 {
+        font-size: 1.1em;
+    }
+
+    .group-icon,
+    .equipment-icon {
+        font-size: 2em;
     }
 }
