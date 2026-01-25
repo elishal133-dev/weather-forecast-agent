@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support AFL Israel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <div class="nav-logo">
+                <span class="logo-icon">🏉</span>
+                <span class="logo-text">AFL Israel</span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-link">Join the team</a>
+                <a href="#" class="nav-link active">Support us</a>
+                <a href="#" class="nav-link">Contact us</a>
+            </div>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+        </nav>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="mobile-menu" style="display: none;">
+            <a href="#" class="mobile-nav-link">Join the team</a>
+            <a href="#" class="mobile-nav-link active">Support us</a>
+            <a href="#" class="mobile-nav-link">Contact us</a>
+        </div>
+
+        <!-- Hero Section -->
+        <section class="support-hero">
+            <div class="support-hero-overlay"></div>
+            <div class="support-hero-content">
+                <h1>Support AFL Israel!</h1>
+                <p class="support-tagline">Seeing you consider to support us is warming our hearts!</p>
+                <p class="support-description">We are able to continue our journey of making AFL a well established sport in Israel with your support.</p>
+
+                <div class="quick-donate-section">
+                    <span class="donors-label">Just one click:</span>
+                    <div class="quick-donate-amounts">
+                        <button class="quick-donate-btn" onclick="openDonationModal('general', 50)">$50</button>
+                        <button class="quick-donate-btn" onclick="openDonationModal('general', 100)">$100</button>
+                        <button class="quick-donate-btn" onclick="openDonationModal('general', 500)">$500</button>
+                    </div>
+                </div>
+
+                <div class="recent-supporters">
+                    <p><strong>$1,000 US</strong> - Mike M. - "Wish you all the best!"</p>
+                    <p><strong>$500US</strong> - David Steineger - "Go Cheetahs!"</p>
+                </div>
+
+                <div class="thank-you-message">
+                    <p>Thanks - AFL Israel!</p>
+                    <p class="thank-sub">We are grateful for your support</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Campaigns Section -->
+        <section class="campaigns-section">
+            <h2>Campaigns</h2>
+            <div class="campaigns-grid">
+                <!-- Eurocup 2025 -->
+                <div class="campaign-card">
+                    <div class="campaign-image eurocup-2025">
+                        <div class="campaign-image-content">
+                            <span class="campaign-year">2025</span>
+                            <span class="campaign-icon">🏆</span>
+                        </div>
+                    </div>
+                    <div class="campaign-content">
+                        <h3>Eurocup 2025</h3>
+                        <p>After finishing 5th place in Eurocup 2024, we want more!</p>
+                        <p>Help us get better results in Eurocup 2025, and become part of our journey!</p>
+                        <button class="donate-btn" onclick="openDonationModal('eurocup2025')">DONATE</button>
+                    </div>
+                </div>
+
+                <!-- Eurocup 2026 -->
+                <div class="campaign-card">
+                    <div class="campaign-image eurocup-2026">
+                        <div class="campaign-image-content">
+                            <span class="campaign-year">2026</span>
+                            <span class="campaign-icon">🏆</span>
+                        </div>
+                    </div>
+                    <div class="campaign-content">
+                        <h3>Eurocup 2026</h3>
+                        <p>We look far and aim high!</p>
+                        <p>Help us get to the top 3 teams in Eurocup 2026, and become part of our journey!</p>
+                        <button class="donate-btn" onclick="openDonationModal('eurocup2026')">DONATE</button>
+                    </div>
+                </div>
+
+                <!-- AFL Israel 2035 -->
+                <div class="campaign-card">
+                    <div class="campaign-image afl-2035">
+                        <div class="campaign-image-content">
+                            <span class="campaign-year">2035</span>
+                            <span class="campaign-icon">🏉</span>
+                        </div>
+                    </div>
+                    <div class="campaign-content">
+                        <h3>AFL Israel 2035</h3>
+                        <p class="campaign-subtitle">Long Term Goal</p>
+                        <p>A well established and recognized sport in Israel with a Stable Hub (Office, Stadium).</p>
+                        <button class="donate-btn" onclick="openDonationModal('afl2035')">DONATE</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Groups Support Section -->
+        <section class="groups-support-section">
+            <h2>Groups Support</h2>
+            <div class="groups-grid">
+                <div class="group-card">
+                    <div class="group-icon">🐆</div>
+                    <div class="group-content">
+                        <h3>Support The Tel Aviv Cheetahs</h3>
+                        <p>Support our men's team</p>
+                    </div>
+                    <button class="donate-btn small" onclick="openDonationModal('cheetahs')">DONATE</button>
+                </div>
+
+                <div class="group-card">
+                    <div class="group-icon">🐝</div>
+                    <div class="group-content">
+                        <h3>Support The Tel Aviv Bees</h3>
+                        <p>Support our women's team</p>
+                    </div>
+                    <button class="donate-btn small" onclick="openDonationModal('bees')">DONATE</button>
+                </div>
+
+                <div class="group-card">
+                    <div class="group-icon">⭐</div>
+                    <div class="group-content">
+                        <h3>Support The Tel Aviv Juniors</h3>
+                        <p>Support our youth team</p>
+                    </div>
+                    <button class="donate-btn small" onclick="openDonationModal('juniors')">DONATE</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Help us train like pro's Section -->
+        <section class="train-like-pros-section">
+            <h2>Help us train like pro's</h2>
+            <div class="equipment-grid">
+                <div class="equipment-card">
+                    <div class="equipment-icon">🏟️</div>
+                    <div class="equipment-content">
+                        <h3>Build Proper Pitches</h3>
+                        <p>Help us build professional training facilities</p>
+                    </div>
+                    <button class="donate-btn small" onclick="openDonationModal('pitches')">DONATE</button>
+                </div>
+
+                <div class="equipment-card">
+                    <div class="equipment-icon">🏈</div>
+                    <div class="equipment-content">
+                        <h3>Buy Better Equipment</h3>
+                        <p>Quality balls, posts and training gear</p>
+                    </div>
+                    <button class="donate-btn small" onclick="openDonationModal('equipment')">DONATE</button>
+                </div>
+
+                <div class="equipment-card">
+                    <div class="equipment-icon">👕</div>
+                    <div class="equipment-content">
+                        <h3>Get New Kit/Gear</h3>
+                        <p>New uniforms and protective gear</p>
+                    </div>
+                    <button class="donate-btn small" onclick="openDonationModal('gear')">DONATE</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="site-footer">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <span class="logo-icon">🏉</span>
+                    <span>AFL Israel</span>
+                </div>
+                <p>Australian Football League Israel</p>
+                <div class="footer-links">
+                    <a href="#">About</a>
+                    <a href="#">Contact</a>
+                    <a href="#">Privacy</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Donation Modal -->
+    <div id="donation-modal" class="donation-modal" style="display: none;">
+        <div class="donation-modal-content">
+            <button class="modal-close" onclick="closeDonationModal()">&times;</button>
+            <h2 id="modal-title">Support Campaign</h2>
+            <p id="modal-description">Choose your donation amount:</p>
+
+            <div class="donation-tiers">
+                <div class="donation-tier" onclick="selectDonationTier(this, 50)">
+                    <span class="tier-name">Tackle donation</span>
+                    <span class="tier-amount">$50</span>
+                </div>
+                <div class="donation-tier" onclick="selectDonationTier(this, 100)">
+                    <span class="tier-name">Goal donation</span>
+                    <span class="tier-amount">$100</span>
+                </div>
+                <div class="donation-tier" onclick="selectDonationTier(this, 500)">
+                    <span class="tier-name">Speckie Donation</span>
+                    <span class="tier-amount">$500</span>
+                </div>
+                <div class="donation-tier" onclick="selectDonationTier(this, 1000)">
+                    <span class="tier-name">Shoey Donation</span>
+                    <span class="tier-amount">$1000</span>
+                </div>
+                <div class="donation-tier custom" onclick="showCustomAmount(this)">
+                    <span class="tier-name">Other</span>
+                    <span class="tier-amount">Custom</span>
+                </div>
+            </div>
+
+            <div id="custom-amount-section" class="custom-amount-section" style="display: none;">
+                <label for="custom-amount">Enter amount:</label>
+                <div class="custom-amount-input-wrapper">
+                    <span class="currency-symbol">$</span>
+                    <input type="number" id="custom-amount" min="1" placeholder="Enter amount">
+                </div>
+            </div>
+
+            <button id="proceed-donation-btn" class="proceed-donation-btn" onclick="proceedWithDonation()">
+                I want to support!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Donation functionality
+        let selectedDonationAmount = 0;
+        let currentCampaign = 'general';
+
+        const campaignTitles = {
+            'general': 'Support AFL Israel',
+            'eurocup2025': 'Eurocup 2025 Campaign',
+            'eurocup2026': 'Eurocup 2026 Campaign',
+            'afl2035': 'AFL Israel 2035 Vision',
+            'cheetahs': 'Tel Aviv Cheetahs',
+            'bees': 'Tel Aviv Bees',
+            'juniors': 'Tel Aviv Juniors',
+            'pitches': 'Build Proper Pitches',
+            'equipment': 'Buy Better Equipment',
+            'gear': 'Get New Kit/Gear'
+        };
+
+        const campaignDescriptions = {
+            'general': 'Your donation helps us grow AFL in Israel!',
+            'eurocup2025': 'Help us compete in Eurocup 2025!',
+            'eurocup2026': 'Support our journey to top 3 in Eurocup 2026!',
+            'afl2035': 'Help build a lasting legacy for AFL in Israel!',
+            'cheetahs': 'Support our men\'s team!',
+            'bees': 'Support our women\'s team!',
+            'juniors': 'Support our youth development program!',
+            'pitches': 'Help us build professional training facilities!',
+            'equipment': 'Help us get quality training equipment!',
+            'gear': 'Help us get new uniforms and gear!'
+        };
+
+        function openDonationModal(campaign, presetAmount = null) {
+            currentCampaign = campaign;
+            const modal = document.getElementById('donation-modal');
+            const title = document.getElementById('modal-title');
+            const description = document.getElementById('modal-description');
+
+            title.textContent = campaignTitles[campaign] || 'Support AFL Israel';
+            description.textContent = campaignDescriptions[campaign] || 'Choose your donation amount:';
+
+            // Reset selection
+            document.querySelectorAll('.donation-tier').forEach(tier => tier.classList.remove('selected'));
+            document.getElementById('custom-amount-section').style.display = 'none';
+            selectedDonationAmount = 0;
+
+            if (presetAmount) {
+                selectedDonationAmount = presetAmount;
+                document.querySelectorAll('.donation-tier').forEach(tier => {
+                    const amountText = tier.querySelector('.tier-amount').textContent;
+                    if (amountText === `$${presetAmount}`) {
+                        tier.classList.add('selected');
+                    }
+                });
+            }
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDonationModal() {
+            const modal = document.getElementById('donation-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function selectDonationTier(element, amount) {
+            selectedDonationAmount = amount;
+            document.querySelectorAll('.donation-tier').forEach(tier => tier.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('custom-amount-section').style.display = 'none';
+        }
+
+        function showCustomAmount(element) {
+            document.querySelectorAll('.donation-tier').forEach(tier => tier.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('custom-amount-section').style.display = 'block';
+            document.getElementById('custom-amount').focus();
+            selectedDonationAmount = 0;
+        }
+
+        function proceedWithDonation() {
+            const customAmountInput = document.getElementById('custom-amount');
+            if (document.getElementById('custom-amount-section').style.display !== 'none') {
+                selectedDonationAmount = parseInt(customAmountInput.value) || 0;
+            }
+
+            if (selectedDonationAmount <= 0) {
+                alert('Please select or enter a donation amount');
+                return;
+            }
+
+            alert(`Thank you for your $${selectedDonationAmount} donation to ${campaignTitles[currentCampaign]}!\n\nIn a real implementation, this would redirect to a payment processor.`);
+            closeDonationModal();
+        }
+
+        // Close modal on background click
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('donation-modal');
+            if (e.target === modal) {
+                closeDonationModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDonationModal();
+            }
+        });
+    </script>
+</body>
+</html>
