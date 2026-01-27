@@ -1,5 +1,11 @@
 # Kite Forecast Israel
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/elishal133-dev/weather-forecast-agent&branch=claude/new-project-setup-rJIWB)
+
+**Click the button above to deploy instantly!**
+
+---
+
 Real-time kite surfing forecast for all spots in Israel. Get ranked recommendations for the best places to kite today based on wind speed, direction, and wave conditions.
 
 ## Features
