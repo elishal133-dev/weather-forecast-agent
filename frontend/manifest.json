@@ -1,0 +1,15 @@
+{
+    "name": "Kite Forecast Israel",
+    "short_name": "Kite IL",
+    "description": "Real-time kite surfing forecast for all spots in Israel",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f5f7fa",
+    "theme_color": "#0066cc",
+    "lang": "he",
+    "dir": "rtl",
+    "icons": [],
+    "categories": ["weather", "sports"],
+    "prefer_related_applications": false
+}
