@@ -222,14 +222,18 @@ class StarsService:
 
     async def get_rankings(self) -> Dict:
         """Get all locations ranked by stargazing conditions tonight"""
-        rankings = []
+        import asyncio
 
-        for loc in STARGAZING_LOCATIONS:
-            forecast = await self.get_forecast(loc["id"], days=1)
-            if forecast and forecast["forecast"]:
+        # Fetch ALL locations concurrently to avoid 30s Render timeout
+        tasks = [self.get_forecast(loc["id"], days=1) for loc in STARGAZING_LOCATIONS]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        rankings = []
+        for forecast in results:
+            if isinstance(forecast, dict) and forecast.get("forecast"):
                 tonight = forecast["forecast"][0]
                 rankings.append({
-                    "location": loc,
+                    "location": forecast["location"],
                     "score": tonight["score"],
                     "rating": tonight["rating"],
                     "moon_phase": tonight["moon_phase"],

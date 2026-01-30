@@ -150,15 +150,18 @@ class HelicopterService:
 
     async def get_rankings(self) -> Dict:
         """Get all locations ranked by current flight conditions"""
-        rankings = []
+        import asyncio
 
-        for loc in HELICOPTER_LOCATIONS:
-            forecast = await self.get_forecast(loc["id"], days=1)
-            if forecast and forecast["forecast"]:
-                # Get current hour conditions
+        # Fetch ALL locations concurrently to avoid 30s Render timeout
+        tasks = [self.get_forecast(loc["id"], days=1) for loc in HELICOPTER_LOCATIONS]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        rankings = []
+        for forecast in results:
+            if isinstance(forecast, dict) and forecast.get("forecast"):
                 current = forecast["forecast"][0]
                 rankings.append({
-                    "location": loc,
+                    "location": forecast["location"],
                     "score": current["score"],
                     "is_flyable": current["is_flyable"],
                     "wind_speed_knots": current["wind_speed_knots"],

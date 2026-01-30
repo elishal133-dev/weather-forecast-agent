@@ -98,7 +98,7 @@ function renderKiteCard(item, rank) {
             </div>
             <div class="card-stats">
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
-                <div class="stat"><span class="value">${item.wind_direction}</span><span class="unit">כיוון</span></div>
+                <div class="stat"><span class="value">${item.wind_direction_deg || item.wind_direction}°</span><span class="unit">כיוון</span></div>
                 <div class="stat ${waveDanger}"><span class="value">${wave}</span><span class="unit">גלים</span></div>
             </div>
             <div class="card-footer">${item.recommendation}</div>
@@ -228,7 +228,7 @@ async function openKiteDetail(spotId) {
             return `<div class="forecast-hour">
                 <div class="time">${time}</div>
                 <div class="wind">${Math.round(h.wind_speed_knots)}</div>
-                <div class="dir">${h.wind_direction_cardinal}</div>
+                <div class="dir">${h.wind_direction || h.wind_direction_cardinal}°</div>
             </div>`;
         }).join('');
 
