@@ -20,8 +20,8 @@ const translations = {
         'Excellent': 'מעולה', 'Good': 'טוב', 'Fair': 'סביר', 'Poor': 'חלש'
     },
     modes: {
-        'helicopter': 'טיסות מסוקים',
-        'kite': 'קייטסרפינג',
+        'helicopter': 'טיסות',
+        'kite': 'קייט',
         'stars': 'צפייה בכוכבים'
     }
 };
@@ -59,17 +59,20 @@ function switchMode(mode) {
 async function fetchKiteRankings() {
     const params = new URLSearchParams({ limit: 50 });
     if (currentRegion !== 'all') params.set('region', currentRegion);
-    const res = await fetch(`/api/kite/rankings?${params}`);
+    const res = await fetch(`/api/kite/rankings?${params}`, {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
 }
 
 async function fetchHelicopterRankings() {
-    const res = await fetch('/api/helicopter/rankings');
+    const res = await fetch('/api/helicopter/rankings', {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
 }
 
 async function fetchStarsRankings() {
-    const res = await fetch('/api/stars/rankings');
+    const res = await fetch('/api/stars/rankings', {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
 }
 
@@ -77,6 +80,7 @@ async function fetchStarsRankings() {
 function renderKiteCard(item, rank) {
     const rating = item.overall_rating || 'fair';
     const wave = item.wave_height_m !== null ? `${item.wave_height_m.toFixed(1)}m` : 'שטוח';
+    const waveDanger = item.wave_danger ? 'danger' : '';
 
     return `
         <article class="card kite-card" onclick="openKiteDetail('${item.spot_id}')">
@@ -95,7 +99,7 @@ function renderKiteCard(item, rank) {
             <div class="card-stats">
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
                 <div class="stat"><span class="value">${item.wind_direction}</span><span class="unit">כיוון</span></div>
-                <div class="stat"><span class="value">${wave}</span><span class="unit">גלים</span></div>
+                <div class="stat ${waveDanger}"><span class="value">${wave}</span><span class="unit">גלים</span></div>
             </div>
             <div class="card-footer">${item.recommendation}</div>
         </article>
@@ -165,6 +169,7 @@ async function loadData() {
     show(loading);
     hide(error);
     hide(content);
+    loading.querySelector('p').textContent = `טוען ${translations.modes[currentMode]}...`;
 
     try {
         let result;
@@ -172,15 +177,27 @@ async function loadData() {
         if (currentMode === 'kite') {
             result = await fetchKiteRankings();
             data.kite = result;
-            content.innerHTML = result.rankings.map((item, i) => renderKiteCard(item, i + 1)).join('');
+            if (!result.rankings || result.rankings.length === 0) {
+                content.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:2rem">אין נתונים זמינים כרגע. נסה שוב בעוד דקה.</p>';
+            } else {
+                content.innerHTML = result.rankings.map((item, i) => renderKiteCard(item, i + 1)).join('');
+            }
         } else if (currentMode === 'helicopter') {
             result = await fetchHelicopterRankings();
             data.helicopter = result;
-            content.innerHTML = result.rankings.map((item, i) => renderHelicopterCard(item, i + 1)).join('');
+            if (!result.rankings || result.rankings.length === 0) {
+                content.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:2rem">אין נתונים זמינים כרגע. נסה שוב בעוד דקה.</p>';
+            } else {
+                content.innerHTML = result.rankings.map((item, i) => renderHelicopterCard(item, i + 1)).join('');
+            }
         } else if (currentMode === 'stars') {
             result = await fetchStarsRankings();
             data.stars = result;
-            content.innerHTML = result.rankings.map((item, i) => renderStarsCard(item, i + 1)).join('');
+            if (!result.rankings || result.rankings.length === 0) {
+                content.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:2rem">אין נתונים זמינים כרגע. נסה שוב בעוד דקה.</p>';
+            } else {
+                content.innerHTML = result.rankings.map((item, i) => renderStarsCard(item, i + 1)).join('');
+            }
         }
 
         hide(loading);
@@ -189,6 +206,7 @@ async function loadData() {
     } catch (err) {
         console.error('Error loading data:', err);
         hide(loading);
+        $('error').querySelector('p').textContent = `שגיאה בטעינת ${translations.modes[currentMode]}`;
         show(error);
     }
 }

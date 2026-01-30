@@ -241,22 +241,24 @@ def get_current_conditions(forecast: SpotForecast) -> Dict[str, Any]:
     # Find nearest wind data point
     current_wind = None
     if forecast.wind_data:
+        # Use first data point as fallback (most recent forecast hour)
+        current_wind = forecast.wind_data[0]
         for wind in forecast.wind_data:
-            if wind.timestamp >= now:
+            # Compare without timezone info to avoid naive vs aware issues
+            wind_time = wind.timestamp.replace(tzinfo=None) if wind.timestamp.tzinfo else wind.timestamp
+            if wind_time >= now:
                 current_wind = wind
                 break
-        if not current_wind and forecast.wind_data:
-            current_wind = forecast.wind_data[-1]
 
     # Find nearest wave data point
     current_wave = None
     if forecast.wave_data:
+        current_wave = forecast.wave_data[0]
         for wave in forecast.wave_data:
-            if wave.timestamp >= now:
+            wave_time = wave.timestamp.replace(tzinfo=None) if wave.timestamp.tzinfo else wave.timestamp
+            if wave_time >= now:
                 current_wave = wave
                 break
-        if not current_wave and forecast.wave_data:
-            current_wave = forecast.wave_data[-1]
 
     return {
         "spot_id": forecast.spot_id,
