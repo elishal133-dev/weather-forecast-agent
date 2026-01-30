@@ -91,6 +91,10 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
     if app_state.weather_service:
         await app_state.weather_service.close()
+    if app_state.helicopter_service:
+        await app_state.helicopter_service.close()
+    if app_state.stars_service:
+        await app_state.stars_service.close()
 
 
 # ============ FastAPI App ============
@@ -199,6 +203,7 @@ async def get_kite_rankings(
                 "wind_gusts_knots": r.wind_gusts_knots,
                 "wind_direction": r.wind_direction,
                 "wave_height_m": r.wave_height_m,
+                "wave_danger": r.wave_height_m is not None and r.wave_height_m > 1.0,
                 "wind_description": r.wind_description,
                 "wave_description": r.wave_description,
                 "recommendation": r.recommendation,

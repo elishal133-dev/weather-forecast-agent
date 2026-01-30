@@ -247,6 +247,9 @@ body {
 
 .stat .value { font-size: 1.125rem; font-weight: 600; display: block; }
 .stat .unit { font-size: 0.625rem; color: var(--text-secondary); text-transform: uppercase; }
+.stat.danger { background: rgba(244,67,54,0.3); }
+.stat.danger .value { color: var(--poor); }
+.stat.danger .unit { color: var(--poor); }
 
 /* Card Footer */
 .card-footer {

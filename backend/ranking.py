@@ -313,9 +313,9 @@ def rate_spot(
     direction_score = calculate_direction_score(wind_dir_degrees, spot.optimal_wind_directions)
 
     # Calculate overall score
-    # Weights: Wind 50%, Wave safety 30%, Direction match 20%
-    # Per requirements: wind first, then waves
-    overall_score = (wind_score * 0.50) + (wave_score * 0.30) + (direction_score * 0.20)
+    # Weights: Wind 60%, Direction match 30%, Wave safety 10%
+    # Per requirements: wind first priority, waves low weight unless dangerous
+    overall_score = (wind_score * 0.60) + (direction_score * 0.30) + (wave_score * 0.10)
 
     # Apply bonus/penalty for direction match
     if direction_score < 50:
