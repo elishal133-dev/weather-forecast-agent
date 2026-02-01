@@ -109,6 +109,8 @@ function renderKiteCard(item, rank) {
 function renderHelicopterCard(item, rank) {
     const flyable = item.is_flyable;
     const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
+    const sunrise = item.sunrise ? item.sunrise.split('T')[1]?.substring(0,5) : '';
+    const sunset = item.sunset ? item.sunset.split('T')[1]?.substring(0,5) : '';
 
     return `
         <article class="card heli-card" onclick="openHeliDetail('${item.location.id}')">
@@ -125,8 +127,15 @@ function renderHelicopterCard(item, rank) {
             </div>
             <div class="card-stats">
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
+                <div class="stat"><span class="value">${item.wind_direction_deg}°</span><span class="unit">כיוון</span></div>
+                <div class="stat"><span class="value">${item.temperature_c.toFixed(0)}°</span><span class="unit">טמפ׳</span></div>
+                <div class="stat"><span class="value">${item.cloud_symbol}</span><span class="unit">${item.cloud_cover_percent}%</span></div>
+            </div>
+            <div class="card-stats">
                 <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
-                <div class="stat"><span class="value">${flyable ? '✓' : '✗'}</span><span class="unit">סטטוס</span></div>
+                <div class="stat"><span class="value">${item.cloud_base_ft}</span><span class="unit">ft בסיס</span></div>
+                <div class="stat"><span class="value">🌅${sunrise}</span><span class="unit">🌇${sunset}</span></div>
+                <div class="stat"><span class="value">${item.moon_illumination}%</span><span class="unit">ירח</span></div>
             </div>
             ${item.warnings.length ? `<div class="card-footer warning">${item.warnings.join(', ')}</div>` : ''}
         </article>
@@ -251,23 +260,44 @@ async function openHeliDetail(locationId) {
     body.innerHTML = '<div class="loading-container"><div class="spinner"></div></div>';
 
     try {
-        const res = await fetch(`/api/helicopter/forecast/${locationId}?days=2`);
+        const res = await fetch(`/api/helicopter/forecast/${locationId}?days=3`, {signal: AbortSignal.timeout(60000)});
         const forecast = await res.json();
 
+        // Daily summary cards
+        const dailyHtml = (forecast.daily || []).map(d => {
+            const dayName = new Date(d.date).toLocaleDateString('he-IL', {weekday: 'short', day: 'numeric', month: 'numeric'});
+            const sunrise = d.sunrise ? d.sunrise.split('T')[1]?.substring(0,5) : '';
+            const sunset = d.sunset ? d.sunset.split('T')[1]?.substring(0,5) : '';
+            return `<div class="daily-card">
+                <div class="daily-date">${dayName}</div>
+                <div class="daily-cloud">${d.cloud_symbol}</div>
+                <div class="daily-temp">${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
+                <div class="daily-wind">💨 ${d.wind_max_knots?.toFixed(0)}kts ${d.wind_direction_dominant}°</div>
+                <div class="daily-cloud-base">☁️ בסיס: ${d.cloud_base_avg_ft}ft</div>
+                <div class="daily-sun">🌅${sunrise} 🌇${sunset}</div>
+                <div class="daily-moon">${d.moon_phase} ${d.moon_illumination}%</div>
+                <div class="daily-flyable">${d.flyable_hours}/${d.total_hours} שעות טיסה</div>
+            </div>`;
+        }).join('');
+
+        // Hourly forecast
         const hoursHtml = forecast.forecast.slice(0, 24).map(h => {
             const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit'});
-            const status = h.is_flyable ? '✓' : '✗';
             return `<div class="forecast-hour ${h.is_flyable ? 'good' : 'poor'}">
                 <div class="time">${time}</div>
-                <div class="wind">${Math.round(h.wind_speed_knots)}</div>
-                <div class="dir">${status}</div>
+                <div class="wind">${Math.round(h.wind_speed_knots)}kts</div>
+                <div class="dir">${h.wind_direction_deg}°</div>
+                <div class="cloud">${h.cloud_symbol}</div>
+                <div class="temp">${h.temperature_c}°</div>
             </div>`;
         }).join('');
 
         body.innerHTML = `
             <h2>${forecast.location.name_he}</h2>
             <p class="subtitle">${forecast.location.name}</p>
-            <h3>תחזית 24 שעות (רוח בקשר)</h3>
+            <h3>תחזית יומית</h3>
+            <div class="daily-cards">${dailyHtml}</div>
+            <h3>תחזית שעתית (24 שעות)</h3>
             <div class="forecast-hours">${hoursHtml}</div>
         `;
     } catch (err) {

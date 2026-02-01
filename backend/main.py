@@ -204,7 +204,7 @@ async def get_kite_rankings(
                 "wind_direction": r.wind_direction,
                 "wind_direction_deg": r.wind_direction_deg,
                 "wave_height_m": r.wave_height_m,
-                "wave_danger": r.wave_height_m is not None and r.wave_height_m > 1.0,
+                "wave_danger": r.wave_height_m is not None and r.wave_height_m > 1.5,
                 "wind_description": r.wind_description,
                 "wave_description": r.wave_description,
                 "recommendation": r.recommendation,

@@ -235,7 +235,11 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-sm);
-    padding: 0 var(--spacing-md) var(--spacing-md);
+    padding: 0 var(--spacing-md) var(--spacing-sm);
+}
+
+.heli-card .card-stats {
+    grid-template-columns: repeat(4, 1fr);
 }
 
 .stat {
@@ -333,6 +337,40 @@ body {
 
 .forecast-hour.good { background: rgba(0,200,83,0.2); }
 .forecast-hour.poor { background: rgba(244,67,54,0.2); }
+
+/* Daily Cards (Helicopter detail) */
+.daily-cards {
+    display: flex;
+    gap: var(--spacing-sm);
+    overflow-x: auto;
+    padding-bottom: var(--spacing-md);
+}
+
+.daily-cards::-webkit-scrollbar { display: none; }
+
+.daily-card {
+    flex-shrink: 0;
+    min-width: 160px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.daily-date { font-weight: 600; font-size: 0.875rem; }
+.daily-cloud { font-size: 2rem; }
+.daily-temp { font-size: 1rem; font-weight: 600; }
+.daily-wind, .daily-cloud-base, .daily-sun, .daily-moon, .daily-flyable {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.daily-flyable { font-weight: 600; color: var(--good); }
+
+.forecast-hour .cloud { font-size: 0.875rem; }
+.forecast-hour .temp { font-size: 0.75rem; color: var(--text-secondary); }
 
 /* Forecast Days */
 .forecast-days {
