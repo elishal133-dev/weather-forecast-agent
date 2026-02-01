@@ -202,8 +202,9 @@ async def get_kite_rankings(
                 "wind_speed_knots": r.wind_speed_knots,
                 "wind_gusts_knots": r.wind_gusts_knots,
                 "wind_direction": r.wind_direction,
+                "wind_direction_deg": r.wind_direction_deg,
                 "wave_height_m": r.wave_height_m,
-                "wave_danger": r.wave_height_m is not None and r.wave_height_m > 1.0,
+                "wave_danger": r.wave_height_m is not None and r.wave_height_m > 1.5,
                 "wind_description": r.wind_description,
                 "wave_description": r.wave_description,
                 "recommendation": r.recommendation,
@@ -233,7 +234,8 @@ async def get_kite_spot_forecast(spot_id: str, hours: int = Query(24, ge=1, le=7
             "wind_speed_knots": round(wind.wind_speed_knots, 1),
             "wind_gusts_knots": round(wind.wind_gusts_knots, 1),
             "wind_direction": wind.wind_direction,
-            "wind_direction_cardinal": wind.wind_direction_cardinal
+            "wind_direction_cardinal": wind.wind_direction_cardinal,
+            "wind_direction_deg": wind.wind_direction
         }
         if forecast.wave_data and i < len(forecast.wave_data):
             wave = forecast.wave_data[i]
