@@ -185,6 +185,13 @@ body {
 
 .hidden { display: none !important; }
 
+.last-update {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: var(--spacing-sm) 0;
+}
+
 /* Cards */
 .card {
     background: var(--surface);
@@ -238,7 +245,8 @@ body {
     padding: 0 var(--spacing-md) var(--spacing-sm);
 }
 
-.heli-card .card-stats {
+.heli-card .card-stats,
+.kite-stats {
     grid-template-columns: repeat(4, 1fr);
 }
 
@@ -334,6 +342,8 @@ body {
 .forecast-hour .time { font-size: 0.75rem; color: var(--text-secondary); }
 .forecast-hour .wind { font-size: 1.125rem; font-weight: 600; }
 .forecast-hour .dir { font-size: 0.75rem; }
+.forecast-hour .wave { font-size: 0.75rem; color: var(--text-secondary); }
+.forecast-hour .wave.danger { color: var(--poor); font-weight: 600; }
 
 .forecast-hour.good { background: rgba(0,200,83,0.2); }
 .forecast-hour.poor { background: rgba(244,67,54,0.2); }
