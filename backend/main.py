@@ -10,6 +10,7 @@ from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -48,6 +49,26 @@ app_state = AppState()
 
 
 # ============ Background Tasks ============
+async def keep_alive():
+    """Ping own health endpoint every 10 min to prevent Render free tier spin-down"""
+    url = os.environ.get("RENDER_EXTERNAL_URL")
+    if not url:
+        print("[keep-alive] RENDER_EXTERNAL_URL not set, skipping")
+        return
+
+    health_url = f"{url}/api/health"
+    print(f"[keep-alive] Started, pinging {health_url} every 10 min")
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        while True:
+            await asyncio.sleep(600)  # 10 minutes
+            try:
+                resp = await client.get(health_url)
+                print(f"[keep-alive] Ping OK: {resp.status_code}")
+            except Exception as e:
+                print(f"[keep-alive] Ping failed: {e}")
+
+
 async def refresh_kite_data():
     """Refresh kite forecast data"""
     if app_state.is_updating:
@@ -86,7 +107,12 @@ async def lifespan(app: FastAPI):
     # Initial data fetch
     await refresh_kite_data()
 
+    # Start keep-alive pinger
+    keep_alive_task = asyncio.create_task(keep_alive())
+
     yield
+
+    keep_alive_task.cancel()
 
     print("Shutting down...")
     if app_state.weather_service:

@@ -96,8 +96,9 @@ function renderKiteCard(item, rank) {
                     <span class="label">${translations.ratings[rating] || rating}</span>
                 </div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats kite-stats">
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
+                <div class="stat"><span class="value">${item.wind_gusts_knots.toFixed(0)}</span><span class="unit">משבים</span></div>
                 <div class="stat"><span class="value">${item.wind_direction_deg || item.wind_direction}°</span><span class="unit">כיוון</span></div>
                 <div class="stat ${waveDanger}"><span class="value">${wave}</span><span class="unit">גלים</span></div>
             </div>
@@ -133,7 +134,7 @@ function renderHelicopterCard(item, rank) {
             </div>
             <div class="card-stats">
                 <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
-                <div class="stat"><span class="value">${item.cloud_base_ft}</span><span class="unit">ft בסיס</span></div>
+                <div class="stat"><span class="value">${item.cloud_base_ft.toLocaleString()}</span><span class="unit">ft בסיס</span></div>
                 <div class="stat"><span class="value">🌅${sunrise}</span><span class="unit">🌇${sunset}</span></div>
                 <div class="stat"><span class="value">${item.moon_illumination}%</span><span class="unit">ירח</span></div>
             </div>
@@ -212,6 +213,15 @@ async function loadData() {
         hide(loading);
         show(content);
 
+        // Show last updated
+        const updateEl = $('last-update');
+        const fetchedAt = result?.fetched_at || result?.last_update;
+        if (fetchedAt) {
+            const t = new Date(fetchedAt).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+            updateEl.textContent = `עודכן: ${t}`;
+            show(updateEl);
+        }
+
     } catch (err) {
         console.error('Error loading data:', err);
         hide(loading);
@@ -229,22 +239,25 @@ async function openKiteDetail(spotId) {
     body.innerHTML = '<div class="loading-container"><div class="spinner"></div></div>';
 
     try {
-        const res = await fetch(`/api/kite/forecast/${spotId}?hours=12`);
+        const res = await fetch(`/api/kite/forecast/${spotId}?hours=24`, {signal: AbortSignal.timeout(60000)});
         const forecast = await res.json();
 
         const hoursHtml = forecast.hourly.map(h => {
             const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'});
+            const wave = h.wave_height_m != null ? `${h.wave_height_m.toFixed(1)}m` : '-';
+            const waveDanger = h.wave_height_m != null && h.wave_height_m > 1.5 ? ' danger' : '';
             return `<div class="forecast-hour">
                 <div class="time">${time}</div>
-                <div class="wind">${Math.round(h.wind_speed_knots)}</div>
-                <div class="dir">${h.wind_direction || h.wind_direction_cardinal}°</div>
+                <div class="wind">${Math.round(h.wind_speed_knots)}kts</div>
+                <div class="dir">${h.wind_direction_deg || h.wind_direction}°</div>
+                <div class="wave${waveDanger}">${wave}</div>
             </div>`;
         }).join('');
 
         body.innerHTML = `
             <h2>${forecast.spot_name_he}</h2>
             <p class="subtitle">${forecast.spot_name}</p>
-            <h3>תחזית 12 שעות (רוח בקשר)</h3>
+            <h3>תחזית 24 שעות</h3>
             <div class="forecast-hours">${hoursHtml}</div>
         `;
     } catch (err) {
@@ -273,7 +286,7 @@ async function openHeliDetail(locationId) {
                 <div class="daily-cloud">${d.cloud_symbol}</div>
                 <div class="daily-temp">${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
                 <div class="daily-wind">💨 ${d.wind_max_knots?.toFixed(0)}kts ${d.wind_direction_dominant}°</div>
-                <div class="daily-cloud-base">☁️ בסיס: ${d.cloud_base_avg_ft}ft</div>
+                <div class="daily-cloud-base">☁️ בסיס: ${d.cloud_base_avg_ft.toLocaleString()}ft</div>
                 <div class="daily-sun">🌅${sunrise} 🌇${sunset}</div>
                 <div class="daily-moon">${d.moon_phase} ${d.moon_illumination}%</div>
                 <div class="daily-flyable">${d.flyable_hours}/${d.total_hours} שעות טיסה</div>
@@ -317,7 +330,7 @@ async function openStarsDetail(locationId) {
         const forecast = await res.json();
 
         const daysHtml = forecast.forecast.map(d => {
-            const dateStr = new Date(d.date).toLocaleDateString('he-IL', {weekday: 'short', day: 'numeric'});
+            const dateStr = new Date(d.date).toLocaleDateString('he-IL', {weekday: 'long', day: 'numeric', month: 'numeric'});
             return `<div class="forecast-day ${d.is_good_night ? 'good' : ''}">
                 <div class="date">${dateStr}</div>
                 <div class="score">${Math.round(d.score)}</div>
