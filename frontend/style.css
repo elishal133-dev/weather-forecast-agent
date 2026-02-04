@@ -246,8 +246,13 @@ body {
 }
 
 .heli-card .card-stats,
-.kite-stats {
+.kite-stats,
+.heli-stats {
     grid-template-columns: repeat(4, 1fr);
+}
+
+.heli-card .cloud-stat .value {
+    font-size: 1.5rem;
 }
 
 .stat {
@@ -381,6 +386,27 @@ body {
 
 .forecast-hour .cloud { font-size: 0.875rem; }
 .forecast-hour .temp { font-size: 0.75rem; color: var(--text-secondary); }
+
+/* Helicopter forecast styling */
+.heli-hours {
+    gap: var(--spacing-md);
+}
+
+.forecast-hour.heli-forecast {
+    min-width: 70px;
+    padding: var(--spacing-md) var(--spacing-sm);
+}
+
+.forecast-hour .cloud-big {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    margin: var(--spacing-xs) 0;
+}
+
+.forecast-hour .vis {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
 
 /* Forecast Days */
 .forecast-days {

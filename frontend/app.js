@@ -117,7 +117,6 @@ function renderHelicopterCard(item, rank) {
         <article class="card heli-card" onclick="openHeliDetail('${item.location.id}')">
             <div class="card-header">
                 <div class="card-info">
-                    <span class="rank">#${rank}</span>
                     <h3>${item.location.name_he}</h3>
                     <span class="subtitle">${item.location.name}</span>
                 </div>
@@ -126,15 +125,15 @@ function renderHelicopterCard(item, rank) {
                     <span class="label">${flyable ? 'טיסה' : 'לא טיסה'}</span>
                 </div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats heli-stats">
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
                 <div class="stat"><span class="value">${item.wind_direction_deg}°</span><span class="unit">כיוון</span></div>
                 <div class="stat"><span class="value">${item.temperature_c.toFixed(0)}°</span><span class="unit">טמפ׳</span></div>
-                <div class="stat"><span class="value">${item.cloud_symbol}</span><span class="unit">${item.cloud_cover_percent}%</span></div>
+                <div class="stat cloud-stat"><span class="value">${item.cloud_symbol}</span><span class="unit">${item.cloud_cover_percent}%</span></div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats heli-stats">
                 <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
-                <div class="stat"><span class="value">${item.cloud_base_ft.toLocaleString()}</span><span class="unit">ft בסיס</span></div>
+                <div class="stat"><span class="value">${(item.cloud_base_ft/1000).toFixed(1)}k</span><span class="unit">ft בסיס</span></div>
                 <div class="stat"><span class="value">🌅${sunrise}</span><span class="unit">🌇${sunset}</span></div>
                 <div class="stat"><span class="value">${item.moon_illumination}%</span><span class="unit">ירח</span></div>
             </div>
@@ -286,22 +285,24 @@ async function openHeliDetail(locationId) {
                 <div class="daily-cloud">${d.cloud_symbol}</div>
                 <div class="daily-temp">${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
                 <div class="daily-wind">💨 ${d.wind_max_knots?.toFixed(0)}kts ${d.wind_direction_dominant}°</div>
-                <div class="daily-cloud-base">☁️ בסיס: ${d.cloud_base_avg_ft.toLocaleString()}ft</div>
+                <div class="daily-cloud-base">☁️ בסיס: ${(d.cloud_base_avg_ft/1000).toFixed(1)}k ft</div>
                 <div class="daily-sun">🌅${sunrise} 🌇${sunset}</div>
                 <div class="daily-moon">${d.moon_phase} ${d.moon_illumination}%</div>
                 <div class="daily-flyable">${d.flyable_hours}/${d.total_hours} שעות טיסה</div>
             </div>`;
         }).join('');
 
-        // Hourly forecast
-        const hoursHtml = forecast.forecast.slice(0, 24).map(h => {
-            const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit'});
-            return `<div class="forecast-hour ${h.is_flyable ? 'good' : 'poor'}">
+        // 3-hour forecast (filter every 3rd hour)
+        const threeHourData = forecast.forecast.filter((_, i) => i % 3 === 0).slice(0, 24);
+        const hoursHtml = threeHourData.map(h => {
+            const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'});
+            return `<div class="forecast-hour heli-forecast ${h.is_flyable ? 'good' : 'poor'}">
                 <div class="time">${time}</div>
+                <div class="cloud-big">${h.cloud_symbol}</div>
                 <div class="wind">${Math.round(h.wind_speed_knots)}kts</div>
                 <div class="dir">${h.wind_direction_deg}°</div>
-                <div class="cloud">${h.cloud_symbol}</div>
-                <div class="temp">${h.temperature_c}°</div>
+                <div class="temp">${h.temperature_c.toFixed(0)}°</div>
+                <div class="vis">${h.visibility_km.toFixed(0)}km</div>
             </div>`;
         }).join('');
 
@@ -310,8 +311,8 @@ async function openHeliDetail(locationId) {
             <p class="subtitle">${forecast.location.name}</p>
             <h3>תחזית יומית</h3>
             <div class="daily-cards">${dailyHtml}</div>
-            <h3>תחזית שעתית (24 שעות)</h3>
-            <div class="forecast-hours">${hoursHtml}</div>
+            <h3>תחזית 3 שעות</h3>
+            <div class="forecast-hours heli-hours">${hoursHtml}</div>
         `;
     } catch (err) {
         body.innerHTML = '<p>שגיאה בטעינה</p>';
