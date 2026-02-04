@@ -43,26 +43,18 @@ HELICOPTER_LOCATIONS = [
     {"id": "netanya", "name": "Netanya", "name_he": "נתניה", "lat": 32.3215, "lon": 34.8532},
 ]
 
-# Cloud cover to oktas symbol mapping (8 symbols)
-CLOUD_SYMBOLS = [
-    (0, "☀️"),       # 0 oktas - clear
-    (12.5, "🌤"),    # 1 okta - mostly clear
-    (25, "⛅"),      # 2-3 oktas - partly cloudy
-    (37.5, "⛅"),
-    (50, "🌥"),      # 4 oktas - half cloudy
-    (62.5, "🌥"),    # 5 oktas
-    (75, "☁️"),      # 6-7 oktas - mostly cloudy
-    (87.5, "☁️"),
-    (100, "☁️"),     # 8 oktas - overcast
-]
+def cloud_oktas(cover_pct: float) -> int:
+    """Convert cloud cover percentage to oktas (0-8 scale)"""
+    if cover_pct is None:
+        return 0
+    # Convert percentage to oktas (0-8)
+    return min(8, max(0, round(cover_pct / 12.5)))
 
 
-def cloud_symbol(cover_pct: float) -> str:
-    """Convert cloud cover % to weather symbol"""
-    for threshold, symbol in reversed(CLOUD_SYMBOLS):
-        if cover_pct >= threshold:
-            return symbol
-    return "☀️"
+def cloud_oktas_str(cover_pct: float) -> str:
+    """Convert cloud cover percentage to oktas string format (e.g., '6/8')"""
+    oktas = cloud_oktas(cover_pct)
+    return f"{oktas}/8"
 
 
 def estimate_cloud_base_ft(temp_c: float, dewpoint_c: float) -> int:
@@ -221,7 +213,7 @@ class HelicopterService:
                     "wind_gusts_knots": round(gusts, 1),
                     "visibility_km": round(visibility, 1),
                     "cloud_cover_percent": cloud,
-                    "cloud_symbol": cloud_symbol(cloud),
+                    "cloud_oktas": cloud_oktas_str(cloud),
                     "cloud_base_ft": cloud_base,
                     "precipitation_mm": round(precip, 2),
                     "temperature_c": round(temp, 1),
@@ -261,7 +253,7 @@ class HelicopterService:
                     "wind_direction_dominant": daily_raw.get("wind_direction_10m_dominant", [])[i],
                     "precipitation_sum": daily_raw.get("precipitation_sum", [])[i],
                     "cloud_cover_avg": round(avg_cloud),
-                    "cloud_symbol": cloud_symbol(avg_cloud),
+                    "cloud_oktas": cloud_oktas_str(avg_cloud),
                     "cloud_base_avg_ft": round(avg_cloud_base),
                     "sunrise": sunrise,
                     "sunset": sunset,
@@ -308,7 +300,7 @@ class HelicopterService:
                     "visibility_km": current["visibility_km"],
                     "temperature_c": current["temperature_c"],
                     "cloud_cover_percent": current["cloud_cover_percent"],
-                    "cloud_symbol": current["cloud_symbol"],
+                    "cloud_oktas": current["cloud_oktas"],
                     "cloud_base_ft": current["cloud_base_ft"],
                     "sunrise": today.get("sunrise", ""),
                     "sunset": today.get("sunset", ""),

@@ -376,7 +376,7 @@ body {
 }
 
 .daily-date { font-weight: 600; font-size: 0.875rem; }
-.daily-cloud { font-size: 2rem; }
+.daily-cloud { font-size: 1.25rem; font-weight: 700; color: var(--text); }
 .daily-temp { font-size: 1rem; font-weight: 600; }
 .daily-wind, .daily-cloud-base, .daily-sun, .daily-moon, .daily-flyable {
     font-size: 0.75rem;
@@ -426,8 +426,9 @@ body {
     padding: var(--spacing-md) var(--spacing-sm);
 }
 
-.forecast-hour .cloud-big {
-    font-size: 1.75rem;
+.forecast-hour .cloud-oktas {
+    font-size: 1rem;
+    font-weight: 600;
     line-height: 1.2;
     margin: var(--spacing-xs) 0;
 }

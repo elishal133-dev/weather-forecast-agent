@@ -130,7 +130,7 @@ function renderHelicopterCard(item, rank) {
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
                 <div class="stat"><span class="value">${item.wind_direction_deg}°</span><span class="unit">כיוון</span></div>
                 <div class="stat"><span class="value">${item.temperature_c.toFixed(0)}°</span><span class="unit">טמפ׳</span></div>
-                <div class="stat cloud-stat"><span class="value">${item.cloud_symbol}</span><span class="unit">${item.cloud_cover_percent}%</span></div>
+                <div class="stat cloud-stat"><span class="value">${item.cloud_oktas}</span><span class="unit">עננות</span></div>
             </div>
             <div class="card-stats heli-stats">
                 <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
@@ -284,7 +284,7 @@ async function openHeliDetail(locationId) {
             const sunset = d.sunset ? d.sunset.split('T')[1]?.substring(0,5) : '';
             const civilTwilight = d.civil_twilight_end ? d.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
             return `<div class="daily-card">
-                <div class="daily-cloud">${d.cloud_symbol}</div>
+                <div class="daily-cloud">${d.cloud_oktas}</div>
                 <div class="daily-date">${dayName}</div>
                 <div class="daily-temp">${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
                 <div class="daily-wind">💨 ${d.wind_max_knots?.toFixed(0)}kts</div>
@@ -303,7 +303,7 @@ async function openHeliDetail(locationId) {
             const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'});
             return `<div class="forecast-hour heli-forecast ${h.is_flyable ? 'good' : 'poor'}">
                 <div class="time">${time}</div>
-                <div class="cloud-big">${h.cloud_symbol}</div>
+                <div class="cloud-oktas">${h.cloud_oktas}</div>
                 <div class="wind">${Math.round(h.wind_speed_knots)}kts</div>
                 <div class="dir">${h.wind_direction_deg}°</div>
                 <div class="temp">${h.temperature_c.toFixed(0)}°</div>
