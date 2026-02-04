@@ -7,11 +7,30 @@ Full daily forecast: wind, temp, clouds, cloud base, sun/moon
 import logging
 import math
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 import httpx
 
 logger = logging.getLogger('helicopter')
+
+
+def calculate_civil_twilight_end(sunset_str: str, latitude: float) -> str:
+    """
+    Calculate civil twilight end time (sun 6° below horizon).
+    For Israel latitudes (~29-33°), civil twilight is approximately 25-30 minutes after sunset.
+    """
+    if not sunset_str:
+        return ""
+    try:
+        sunset_dt = datetime.fromisoformat(sunset_str)
+        # Civil twilight duration varies with latitude and time of year
+        # For Israel (lat ~30-33°), it's approximately 25-28 minutes
+        # Use a simple approximation based on latitude
+        twilight_minutes = int(24 + (latitude - 29) * 0.5)  # ~24-26 min for Israel
+        civil_twilight_end = sunset_dt + timedelta(minutes=twilight_minutes)
+        return civil_twilight_end.isoformat()
+    except Exception:
+        return ""
 
 # Helicopter-friendly locations in Israel
 HELICOPTER_LOCATIONS = [
@@ -24,26 +43,18 @@ HELICOPTER_LOCATIONS = [
     {"id": "netanya", "name": "Netanya", "name_he": "נתניה", "lat": 32.3215, "lon": 34.8532},
 ]
 
-# Cloud cover to oktas symbol mapping (8 symbols)
-CLOUD_SYMBOLS = [
-    (0, "☀️"),       # 0 oktas - clear
-    (12.5, "🌤"),    # 1 okta - mostly clear
-    (25, "⛅"),      # 2-3 oktas - partly cloudy
-    (37.5, "⛅"),
-    (50, "🌥"),      # 4 oktas - half cloudy
-    (62.5, "🌥"),    # 5 oktas
-    (75, "☁️"),      # 6-7 oktas - mostly cloudy
-    (87.5, "☁️"),
-    (100, "☁️"),     # 8 oktas - overcast
-]
+def cloud_oktas(cover_pct: float) -> int:
+    """Convert cloud cover percentage to oktas (0-8 scale)"""
+    if cover_pct is None:
+        return 0
+    # Convert percentage to oktas (0-8)
+    return min(8, max(0, round(cover_pct / 12.5)))
 
 
-def cloud_symbol(cover_pct: float) -> str:
-    """Convert cloud cover % to weather symbol"""
-    for threshold, symbol in reversed(CLOUD_SYMBOLS):
-        if cover_pct >= threshold:
-            return symbol
-    return "☀️"
+def cloud_oktas_str(cover_pct: float) -> str:
+    """Convert cloud cover percentage to oktas string format (e.g., '6/8')"""
+    oktas = cloud_oktas(cover_pct)
+    return f"{oktas}/8"
 
 
 def estimate_cloud_base_ft(temp_c: float, dewpoint_c: float) -> int:
@@ -202,7 +213,7 @@ class HelicopterService:
                     "wind_gusts_knots": round(gusts, 1),
                     "visibility_km": round(visibility, 1),
                     "cloud_cover_percent": cloud,
-                    "cloud_symbol": cloud_symbol(cloud),
+                    "cloud_oktas": cloud_oktas_str(cloud),
                     "cloud_base_ft": cloud_base,
                     "precipitation_mm": round(precip, 2),
                     "temperature_c": round(temp, 1),
@@ -230,6 +241,9 @@ class HelicopterService:
                 avg_cloud_base = sum(h["cloud_base_ft"] for h in day_hours) / day_hours_count
                 flyable_hours = sum(1 for h in day_hours if h["is_flyable"])
 
+                # Calculate civil twilight end (6° below horizon)
+                civil_twilight = calculate_civil_twilight_end(sunset, loc["lat"])
+
                 daily_summaries.append({
                     "date": day_str,
                     "temp_max": daily_raw.get("temperature_2m_max", [])[i],
@@ -239,10 +253,11 @@ class HelicopterService:
                     "wind_direction_dominant": daily_raw.get("wind_direction_10m_dominant", [])[i],
                     "precipitation_sum": daily_raw.get("precipitation_sum", [])[i],
                     "cloud_cover_avg": round(avg_cloud),
-                    "cloud_symbol": cloud_symbol(avg_cloud),
+                    "cloud_oktas": cloud_oktas_str(avg_cloud),
                     "cloud_base_avg_ft": round(avg_cloud_base),
                     "sunrise": sunrise,
                     "sunset": sunset,
+                    "civil_twilight_end": civil_twilight,
                     "moon_illumination": moon_ill,
                     "moon_phase": moon_ph,
                     "flyable_hours": flyable_hours,
@@ -285,10 +300,11 @@ class HelicopterService:
                     "visibility_km": current["visibility_km"],
                     "temperature_c": current["temperature_c"],
                     "cloud_cover_percent": current["cloud_cover_percent"],
-                    "cloud_symbol": current["cloud_symbol"],
+                    "cloud_oktas": current["cloud_oktas"],
                     "cloud_base_ft": current["cloud_base_ft"],
                     "sunrise": today.get("sunrise", ""),
                     "sunset": today.get("sunset", ""),
+                    "civil_twilight_end": today.get("civil_twilight_end", ""),
                     "moon_illumination": today.get("moon_illumination", 0),
                     "moon_phase": today.get("moon_phase", ""),
                     "warnings": current["warnings"],

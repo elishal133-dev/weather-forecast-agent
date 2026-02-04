@@ -376,13 +376,42 @@ body {
 }
 
 .daily-date { font-weight: 600; font-size: 0.875rem; }
-.daily-cloud { font-size: 2rem; }
+.daily-cloud { font-size: 1.25rem; font-weight: 700; color: var(--text); }
 .daily-temp { font-size: 1rem; font-weight: 600; }
 .daily-wind, .daily-cloud-base, .daily-sun, .daily-moon, .daily-flyable {
     font-size: 0.75rem;
     color: var(--text-secondary);
 }
 .daily-flyable { font-weight: 600; color: var(--good); }
+
+/* Sun times - same size display */
+.daily-sun-row {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.daily-sun-row span {
+    font-size: 0.75rem;
+}
+
+/* Helicopter sun stat - same size for sunrise/sunset */
+.sun-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sun-stat .value {
+    font-size: 0.875rem !important;
+    font-weight: 500;
+}
+
+/* Twilight stat */
+.twilight-stat {
+    background: rgba(255, 152, 0, 0.15);
+}
+.twilight-stat .value {
+    font-size: 0.8rem !important;
+    color: #ffb74d;
+}
 
 .forecast-hour .cloud { font-size: 0.875rem; }
 .forecast-hour .temp { font-size: 0.75rem; color: var(--text-secondary); }
@@ -397,8 +426,9 @@ body {
     padding: var(--spacing-md) var(--spacing-sm);
 }
 
-.forecast-hour .cloud-big {
-    font-size: 1.75rem;
+.forecast-hour .cloud-oktas {
+    font-size: 1rem;
+    font-weight: 600;
     line-height: 1.2;
     margin: var(--spacing-xs) 0;
 }
