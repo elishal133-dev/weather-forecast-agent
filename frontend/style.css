@@ -384,6 +384,35 @@ body {
 }
 .daily-flyable { font-weight: 600; color: var(--good); }
 
+/* Sun times - same size display */
+.daily-sun-row {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.daily-sun-row span {
+    font-size: 0.75rem;
+}
+
+/* Helicopter sun stat - same size for sunrise/sunset */
+.sun-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sun-stat .value {
+    font-size: 0.875rem !important;
+    font-weight: 500;
+}
+
+/* Twilight stat */
+.twilight-stat {
+    background: rgba(255, 152, 0, 0.15);
+}
+.twilight-stat .value {
+    font-size: 0.8rem !important;
+    color: #ffb74d;
+}
+
 .forecast-hour .cloud { font-size: 0.875rem; }
 .forecast-hour .temp { font-size: 0.75rem; color: var(--text-secondary); }
 

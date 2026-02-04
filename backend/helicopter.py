@@ -7,11 +7,30 @@ Full daily forecast: wind, temp, clouds, cloud base, sun/moon
 import logging
 import math
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 import httpx
 
 logger = logging.getLogger('helicopter')
+
+
+def calculate_civil_twilight_end(sunset_str: str, latitude: float) -> str:
+    """
+    Calculate civil twilight end time (sun 6° below horizon).
+    For Israel latitudes (~29-33°), civil twilight is approximately 25-30 minutes after sunset.
+    """
+    if not sunset_str:
+        return ""
+    try:
+        sunset_dt = datetime.fromisoformat(sunset_str)
+        # Civil twilight duration varies with latitude and time of year
+        # For Israel (lat ~30-33°), it's approximately 25-28 minutes
+        # Use a simple approximation based on latitude
+        twilight_minutes = int(24 + (latitude - 29) * 0.5)  # ~24-26 min for Israel
+        civil_twilight_end = sunset_dt + timedelta(minutes=twilight_minutes)
+        return civil_twilight_end.isoformat()
+    except Exception:
+        return ""
 
 # Helicopter-friendly locations in Israel
 HELICOPTER_LOCATIONS = [
@@ -230,6 +249,9 @@ class HelicopterService:
                 avg_cloud_base = sum(h["cloud_base_ft"] for h in day_hours) / day_hours_count
                 flyable_hours = sum(1 for h in day_hours if h["is_flyable"])
 
+                # Calculate civil twilight end (6° below horizon)
+                civil_twilight = calculate_civil_twilight_end(sunset, loc["lat"])
+
                 daily_summaries.append({
                     "date": day_str,
                     "temp_max": daily_raw.get("temperature_2m_max", [])[i],
@@ -243,6 +265,7 @@ class HelicopterService:
                     "cloud_base_avg_ft": round(avg_cloud_base),
                     "sunrise": sunrise,
                     "sunset": sunset,
+                    "civil_twilight_end": civil_twilight,
                     "moon_illumination": moon_ill,
                     "moon_phase": moon_ph,
                     "flyable_hours": flyable_hours,
@@ -289,6 +312,7 @@ class HelicopterService:
                     "cloud_base_ft": current["cloud_base_ft"],
                     "sunrise": today.get("sunrise", ""),
                     "sunset": today.get("sunset", ""),
+                    "civil_twilight_end": today.get("civil_twilight_end", ""),
                     "moon_illumination": today.get("moon_illumination", 0),
                     "moon_phase": today.get("moon_phase", ""),
                     "warnings": current["warnings"],
