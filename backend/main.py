@@ -1,9 +1,11 @@
 """
 Israel Outdoor Forecast - Unified Backend
 Three activity modes: Helicopter, Kite, Stargazing
+With automatic data verification
 """
 
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, date, timedelta
@@ -31,6 +33,20 @@ from helicopter import HelicopterService, HELICOPTER_LOCATIONS
 # Stargazing imports
 from stars import StarsService, STARGAZING_LOCATIONS
 
+# Verification imports
+from verification import (
+    verifier, verify_kite_rankings_background,
+    verify_helicopter_forecast_background, verify_stars_forecast_background
+)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger('main')
+
 
 # ============ App State ============
 class AppState:
@@ -53,25 +69,26 @@ async def keep_alive():
     """Ping own health endpoint every 10 min to prevent Render free tier spin-down"""
     url = os.environ.get("RENDER_EXTERNAL_URL")
     if not url:
-        print("[keep-alive] RENDER_EXTERNAL_URL not set, skipping")
+        logger.info("[keep-alive] RENDER_EXTERNAL_URL not set, skipping")
         return
 
     health_url = f"{url}/api/health"
-    print(f"[keep-alive] Started, pinging {health_url} every 10 min")
+    logger.info(f"[keep-alive] Started, pinging {health_url} every 10 min")
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         while True:
             await asyncio.sleep(600)  # 10 minutes
             try:
                 resp = await client.get(health_url)
-                print(f"[keep-alive] Ping OK: {resp.status_code}")
+                logger.debug(f"[keep-alive] Ping OK: {resp.status_code}")
             except Exception as e:
-                print(f"[keep-alive] Ping failed: {e}")
+                logger.warning(f"[keep-alive] Ping failed: {e}")
 
 
 async def refresh_kite_data():
-    """Refresh kite forecast data"""
+    """Refresh kite forecast data with background verification"""
     if app_state.is_updating:
+        logger.info("Kite data refresh already in progress, skipping")
         return
 
     app_state.is_updating = True
@@ -79,14 +96,33 @@ async def refresh_kite_data():
         spots = get_all_spots()
         spot_coords = get_spot_coordinates()
 
+        logger.info(f"Fetching forecasts for {len(spot_coords)} kite spots...")
         app_state.kite_forecasts = await app_state.weather_service.fetch_all_spots_forecast(
             spot_coords, days=3
         )
         app_state.kite_rankings = rank_all_spots(spots, app_state.kite_forecasts)
         app_state.last_update = datetime.now()
-        print(f"[{datetime.now()}] Kite data refreshed: {len(app_state.kite_forecasts)} spots")
+        logger.info(f"Kite data refreshed: {len(app_state.kite_forecasts)} spots")
+
+        # Run verification in background (non-blocking)
+        rankings_data = [
+            {
+                "spot_id": r.spot_id,
+                "wind_speed_knots": r.wind_speed_knots,
+                "wind_gusts_knots": r.wind_gusts_knots,
+                "wind_direction_deg": r.wind_direction_deg,
+                "wave_height_m": r.wave_height_m,
+                "overall_score": r.overall_score,
+                "wind_score": r.wind_score,
+                "wave_score": r.wave_score,
+                "direction_score": r.direction_score
+            }
+            for r in app_state.kite_rankings
+        ]
+        asyncio.create_task(verify_kite_rankings_background(rankings_data))
+
     except Exception as e:
-        print(f"Error refreshing kite data: {e}")
+        logger.error(f"Error refreshing kite data: {e}", exc_info=True)
     finally:
         app_state.is_updating = False
 
@@ -94,15 +130,17 @@ async def refresh_kite_data():
 # ============ Lifespan ============
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("=" * 50)
-    print("  Israel Outdoor Forecast")
-    print("  Modes: Helicopter | Kite | Stars")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("  Israel Outdoor Forecast")
+    logger.info("  Modes: Helicopter | Kite | Stars")
+    logger.info("  Data verification: ENABLED")
+    logger.info("=" * 50)
 
     # Initialize services
     app_state.weather_service = WeatherService()
     app_state.helicopter_service = HelicopterService()
     app_state.stars_service = StarsService()
+    logger.info("All services initialized")
 
     # Initial data fetch
     await refresh_kite_data()
@@ -114,13 +152,14 @@ async def lifespan(app: FastAPI):
 
     keep_alive_task.cancel()
 
-    print("Shutting down...")
+    logger.info("Shutting down...")
     if app_state.weather_service:
         await app_state.weather_service.close()
     if app_state.helicopter_service:
         await app_state.helicopter_service.close()
     if app_state.stars_service:
         await app_state.stars_service.close()
+    logger.info("Shutdown complete")
 
 
 # ============ FastAPI App ============
@@ -163,12 +202,24 @@ async def serve_manifest():
 # ============ Health Check ============
 @app.get("/api/health")
 async def health():
+    verification_summary = verifier.get_summary()
     return {
         "status": "healthy",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "modes": ["helicopter", "kite", "stars"],
-        "last_update": app_state.last_update.isoformat() if app_state.last_update else None
+        "last_update": app_state.last_update.isoformat() if app_state.last_update else None,
+        "verification": {
+            "enabled": True,
+            "success_rate": verification_summary["success_rate"],
+            "total_checks": verification_summary["total_checks"]
+        }
     }
+
+
+@app.get("/api/verification")
+async def get_verification_status():
+    """Get data verification status and recent issues"""
+    return verifier.get_summary()
 
 
 # ============ KITE ENDPOINTS ============
@@ -285,10 +336,14 @@ async def get_helicopter_locations():
 
 @app.get("/api/helicopter/forecast/{location}")
 async def get_helicopter_forecast(location: str, days: int = Query(3, ge=1, le=7)):
-    """Get helicopter flight conditions forecast"""
+    """Get helicopter flight conditions forecast with background verification"""
     forecast = await app_state.helicopter_service.get_forecast(location, days)
     if not forecast:
         raise HTTPException(404, f"Location not found: {location}")
+
+    # Run verification in background (non-blocking)
+    asyncio.create_task(verify_helicopter_forecast_background(forecast))
+
     return forecast
 
 
@@ -307,10 +362,14 @@ async def get_stars_locations():
 
 @app.get("/api/stars/forecast/{location}")
 async def get_stars_forecast(location: str, days: int = Query(7, ge=1, le=14)):
-    """Get stargazing conditions forecast"""
+    """Get stargazing conditions forecast with background verification"""
     forecast = await app_state.stars_service.get_forecast(location, days)
     if not forecast:
         raise HTTPException(404, f"Location not found: {location}")
+
+    # Run verification in background (non-blocking)
+    asyncio.create_task(verify_stars_forecast_background(forecast))
+
     return forecast
 
 

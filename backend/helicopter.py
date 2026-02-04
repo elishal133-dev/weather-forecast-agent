@@ -4,11 +4,14 @@ Evaluates conditions for safe helicopter flights
 Full daily forecast: wind, temp, clouds, cloud base, sun/moon
 """
 
+import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional
 import httpx
+
+logger = logging.getLogger('helicopter')
 
 # Helicopter-friendly locations in Israel
 HELICOPTER_LOCATIONS = [
@@ -220,10 +223,11 @@ class HelicopterService:
                 moon_ill = moon_illumination(day_date)
                 moon_ph = moon_phase_name(day_date)
 
-                # Get hours for this day
+                # Get hours for this day (safe division)
                 day_hours = [c for c in conditions if c["time"].startswith(day_str)]
-                avg_cloud = sum(h["cloud_cover_percent"] for h in day_hours) / max(len(day_hours), 1)
-                avg_cloud_base = sum(h["cloud_base_ft"] for h in day_hours) / max(len(day_hours), 1)
+                day_hours_count = len(day_hours) if len(day_hours) > 0 else 1
+                avg_cloud = sum(h["cloud_cover_percent"] for h in day_hours) / day_hours_count
+                avg_cloud_base = sum(h["cloud_base_ft"] for h in day_hours) / day_hours_count
                 flyable_hours = sum(1 for h in day_hours if h["is_flyable"])
 
                 daily_summaries.append({
@@ -253,7 +257,7 @@ class HelicopterService:
             }
 
         except Exception as e:
-            print(f"Error fetching helicopter forecast: {e}")
+            logger.error(f"Error fetching helicopter forecast: {e}")
             return None
 
     async def get_rankings(self) -> Dict:

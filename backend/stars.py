@@ -4,11 +4,14 @@ Evaluates conditions for night sky observation
 Factors: Moon rise/phase, cloud cover, light pollution
 """
 
+import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, date, time, timedelta
 from typing import List, Dict, Any, Optional
 import httpx
-import math
+
+logger = logging.getLogger('stars')
 
 # Best stargazing locations in Israel (low light pollution)
 STARGAZING_LOCATIONS = [
@@ -147,7 +150,7 @@ class StarsService:
                         cloud = hourly.get("cloud_cover", [])[j] or 0
                         night_clouds.append(cloud)
 
-                avg_cloud = sum(night_clouds) / len(night_clouds) if night_clouds else 50
+                avg_cloud = sum(night_clouds) / len(night_clouds) if len(night_clouds) > 0 else 50
 
                 # Moon data
                 moon = self._calculate_moon_phase(target_date)
@@ -191,7 +194,7 @@ class StarsService:
             }
 
         except Exception as e:
-            print(f"Error fetching stars forecast: {e}")
+            logger.error(f"Error fetching stars forecast: {e}")
             return None
 
     async def get_best_tonight(self) -> Dict:
