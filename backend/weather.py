@@ -4,10 +4,13 @@ Fetches wind and marine (wave) data for kite spots
 """
 
 import asyncio
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 import httpx
+
+logger = logging.getLogger('weather')
 
 
 @dataclass
@@ -113,7 +116,7 @@ class WeatherService:
             return wind_data
 
         except Exception as e:
-            print(f"Error fetching wind data: {e}")
+            logger.error(f"Error fetching wind data: {e}")
             return []
 
     async def fetch_wave_data(
@@ -157,7 +160,7 @@ class WeatherService:
 
         except Exception as e:
             # Marine data may not be available for inland locations (Kinneret)
-            print(f"Note: Wave data not available: {e}")
+            logger.debug(f"Wave data not available (inland location): {e}")
             return None
 
     async def fetch_spot_forecast(
@@ -224,7 +227,7 @@ class WeatherService:
                 if isinstance(result, SpotForecast):
                     forecasts.append(result)
                 else:
-                    print(f"Error in batch: {result}")
+                    logger.warning(f"Error in batch: {result}")
 
             # Small delay between batches
             if i + batch_size < len(tasks):

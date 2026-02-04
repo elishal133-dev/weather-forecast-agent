@@ -4,11 +4,14 @@ Evaluates conditions for night sky observation
 Factors: Moon rise/phase, cloud cover, light pollution
 """
 
+import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, date, time, timedelta
 from typing import List, Dict, Any, Optional
 import httpx
-import math
+
+logger = logging.getLogger('stars')
 
 # Best stargazing locations in Israel (low light pollution)
 STARGAZING_LOCATIONS = [
@@ -61,22 +64,23 @@ class StarsService:
         lunar_cycle = 29.53059  # days
 
         phase_day = days_since % lunar_cycle
-        illumination = (1 - math.cos(2 * math.pi * phase_day / lunar_cycle)) / 2 * 100
+        phase_fraction = phase_day / lunar_cycle
+        illumination = (1 - math.cos(2 * math.pi * phase_fraction)) / 2 * 100
 
-        # Phase names
-        if phase_day < 1.85:
+        # Phase names (using fraction: 0=new, 0.5=full)
+        if phase_fraction < 0.03 or phase_fraction > 0.97:
             phase = "New Moon"
-        elif phase_day < 7.38:
+        elif phase_fraction < 0.22:
             phase = "Waxing Crescent"
-        elif phase_day < 9.23:
+        elif phase_fraction < 0.28:
             phase = "First Quarter"
-        elif phase_day < 14.77:
+        elif phase_fraction < 0.47:
             phase = "Waxing Gibbous"
-        elif phase_day < 16.61:
+        elif phase_fraction < 0.53:
             phase = "Full Moon"
-        elif phase_day < 22.15:
+        elif phase_fraction < 0.72:
             phase = "Waning Gibbous"
-        elif phase_day < 23.99:
+        elif phase_fraction < 0.78:
             phase = "Last Quarter"
         else:
             phase = "Waning Crescent"
@@ -146,7 +150,7 @@ class StarsService:
                         cloud = hourly.get("cloud_cover", [])[j] or 0
                         night_clouds.append(cloud)
 
-                avg_cloud = sum(night_clouds) / len(night_clouds) if night_clouds else 50
+                avg_cloud = sum(night_clouds) / len(night_clouds) if len(night_clouds) > 0 else 50
 
                 # Moon data
                 moon = self._calculate_moon_phase(target_date)
@@ -190,7 +194,7 @@ class StarsService:
             }
 
         except Exception as e:
-            print(f"Error fetching stars forecast: {e}")
+            logger.error(f"Error fetching stars forecast: {e}")
             return None
 
     async def get_best_tonight(self) -> Dict:
