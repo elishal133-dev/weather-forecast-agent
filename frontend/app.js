@@ -109,7 +109,6 @@ function renderKiteCard(item, rank) {
 
 function renderHelicopterCard(item, rank) {
     const flyable = item.is_flyable;
-    const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
     const sunrise = item.sunrise ? item.sunrise.split('T')[1]?.substring(0,5) : '';
     const sunset = item.sunset ? item.sunset.split('T')[1]?.substring(0,5) : '';
     const civilTwilight = item.civil_twilight_end ? item.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
@@ -120,10 +119,7 @@ function renderHelicopterCard(item, rank) {
                 <div class="card-info">
                     <h3>${item.location.name_he}</h3>
                     <span class="subtitle">${item.location.name}</span>
-                </div>
-                <div class="score-badge ${scoreClass}">
-                    <span class="score">${Math.round(item.score)}</span>
-                    <span class="label">${flyable ? 'טיסה' : 'לא טיסה'}</span>
+                    <span class="flyable-status ${flyable ? 'good' : 'poor'}">${flyable ? '✓ טיסה' : '✗ לא טיסה'}</span>
                 </div>
             </div>
             <div class="card-stats heli-stats">
