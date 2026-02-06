@@ -143,6 +143,8 @@ function renderHelicopterCard(item, rank) {
 function renderStarsCard(item, rank) {
     const rating = item.rating;
     const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
+    const moonrise = item.moonrise || '--:--';
+    const moonset = item.moonset || '--:--';
 
     return `
         <article class="card stars-card" onclick="openStarsDetail('${item.location.id}')">
@@ -157,10 +159,11 @@ function renderStarsCard(item, rank) {
                     <span class="label">${translations.ratings[rating] || rating}</span>
                 </div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats stars-stats">
                 <div class="stat"><span class="value">${item.moon_illumination.toFixed(0)}%</span><span class="unit">ירח</span></div>
                 <div class="stat"><span class="value">${item.cloud_cover.toFixed(0)}%</span><span class="unit">עננות</span></div>
-                <div class="stat"><span class="value">${item.is_good_night ? '⭐' : '☁️'}</span><span class="unit">לילה</span></div>
+                <div class="stat moon-stat"><span class="value">🌙↑ ${moonrise}</span><span class="unit">זריחת ירח</span></div>
+                <div class="stat moon-stat"><span class="value">🌙↓ ${moonset}</span><span class="unit">שקיעת ירח</span></div>
             </div>
             <div class="card-footer">${item.moon_phase}</div>
         </article>

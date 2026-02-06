@@ -250,12 +250,21 @@ body {
 
 .heli-card .card-stats,
 .kite-stats,
-.heli-stats {
+.heli-stats,
+.stars-stats {
     grid-template-columns: repeat(4, 1fr);
 }
 
 .heli-card .cloud-stat .value {
     font-size: 1.5rem;
+}
+
+/* Moon rise/set stats */
+.moon-stat .value {
+    font-size: 0.875rem !important;
+}
+.moon-stat {
+    background: rgba(255, 215, 0, 0.1);
 }
 
 .stat {
