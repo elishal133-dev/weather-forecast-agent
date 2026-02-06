@@ -100,7 +100,7 @@ def moon_phase_name(dt: date) -> str:
 
 
 class HelicopterService:
-    """Service for helicopter flight forecasts"""
+    """Service for helicopter flight forecasts using multi-source weather data"""
 
     WEATHER_API = "https://api.open-meteo.com/v1/forecast"
 
@@ -112,9 +112,21 @@ class HelicopterService:
 
     def __init__(self):
         self.client = httpx.AsyncClient(timeout=30.0)
+        # Import multi-source weather
+        try:
+            from multi_source_weather import MultiSourceWeather
+            self.multi_weather = MultiSourceWeather()
+            self.use_multi_source = True
+            logger.info("HelicopterService: Multi-source weather enabled")
+        except ImportError:
+            self.multi_weather = None
+            self.use_multi_source = False
+            logger.info("HelicopterService: Using single source (Open-Meteo)")
 
     async def close(self):
         await self.client.aclose()
+        if self.multi_weather:
+            await self.multi_weather.close()
 
     def _get_location(self, location_id: str) -> Optional[Dict]:
         for loc in HELICOPTER_LOCATIONS:
@@ -124,10 +136,25 @@ class HelicopterService:
         return None
 
     async def get_forecast(self, location: str, days: int = 3) -> Optional[Dict]:
-        """Get helicopter flight forecast for a location"""
+        """Get helicopter flight forecast for a location using multi-source data"""
         loc = self._get_location(location)
         if not loc:
             return None
+
+        # Fetch multi-source hourly data if available
+        multi_hourly = []
+        sources_used = ["open_meteo"]
+        if self.use_multi_source and self.multi_weather:
+            try:
+                multi_hourly = await self.multi_weather.fetch_hourly(loc["lat"], loc["lon"], hours=days * 24)
+                if multi_hourly:
+                    sources_used = list(set(
+                        src for item in multi_hourly
+                        for src in (item.get("sources", [item.get("source", "unknown")]))
+                    ))
+                    logger.info(f"Multi-source data for {loc['name']}: {len(multi_hourly)} hours from {sources_used}")
+            except Exception as e:
+                logger.warning(f"Multi-source fetch failed for {loc['name']}: {e}")
 
         params = {
             "latitude": loc["lat"],
@@ -158,6 +185,7 @@ class HelicopterService:
 
             conditions = []
             for i, time_str in enumerate(times):
+                # Get base data from Open-Meteo
                 wind = hourly.get("wind_speed_10m", [])[i] or 0
                 wind_dir = hourly.get("wind_direction_10m", [])[i] or 0
                 gusts = hourly.get("wind_gusts_10m", [])[i] or 0
@@ -167,6 +195,20 @@ class HelicopterService:
                 temp = hourly.get("temperature_2m", [])[i] or 20
                 dewpoint = hourly.get("dewpoint_2m", [])[i] or 15
                 humidity = hourly.get("relative_humidity_2m", [])[i] or 50
+
+                # Override with multi-source averaged data if available
+                if multi_hourly and i < len(multi_hourly):
+                    mh = multi_hourly[i]
+                    wind = mh.get("wind_speed_knots", wind)
+                    gusts = mh.get("wind_gusts_knots", gusts)
+                    wind_dir = mh.get("wind_direction_deg", wind_dir)
+                    temp = mh.get("temperature_c", temp)
+                    humidity = mh.get("humidity_percent", humidity)
+                    cloud = mh.get("cloud_cover_percent", cloud)
+                    visibility = mh.get("visibility_km", visibility)
+                    precip = mh.get("precipitation_mm", precip)
+                    if mh.get("dewpoint_c") is not None:
+                        dewpoint = mh.get("dewpoint_c")
 
                 cloud_base = estimate_cloud_base_ft(temp, dewpoint)
 
@@ -268,6 +310,7 @@ class HelicopterService:
                 "location": loc,
                 "forecast": conditions,
                 "daily": daily_summaries,
+                "sources": sources_used,
                 "fetched_at": datetime.now().isoformat()
             }
 

@@ -109,7 +109,6 @@ function renderKiteCard(item, rank) {
 
 function renderHelicopterCard(item, rank) {
     const flyable = item.is_flyable;
-    const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
     const sunrise = item.sunrise ? item.sunrise.split('T')[1]?.substring(0,5) : '';
     const sunset = item.sunset ? item.sunset.split('T')[1]?.substring(0,5) : '';
     const civilTwilight = item.civil_twilight_end ? item.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
@@ -120,10 +119,7 @@ function renderHelicopterCard(item, rank) {
                 <div class="card-info">
                     <h3>${item.location.name_he}</h3>
                     <span class="subtitle">${item.location.name}</span>
-                </div>
-                <div class="score-badge ${scoreClass}">
-                    <span class="score">${Math.round(item.score)}</span>
-                    <span class="label">${flyable ? 'טיסה' : 'לא טיסה'}</span>
+                    <span class="flyable-status ${flyable ? 'good' : 'poor'}">${flyable ? '✓ טיסה' : '✗ לא טיסה'}</span>
                 </div>
             </div>
             <div class="card-stats heli-stats">
@@ -147,6 +143,8 @@ function renderHelicopterCard(item, rank) {
 function renderStarsCard(item, rank) {
     const rating = item.rating;
     const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
+    const moonrise = item.moonrise || '--:--';
+    const moonset = item.moonset || '--:--';
 
     return `
         <article class="card stars-card" onclick="openStarsDetail('${item.location.id}')">
@@ -161,10 +159,11 @@ function renderStarsCard(item, rank) {
                     <span class="label">${translations.ratings[rating] || rating}</span>
                 </div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats stars-stats">
                 <div class="stat"><span class="value">${item.moon_illumination.toFixed(0)}%</span><span class="unit">ירח</span></div>
                 <div class="stat"><span class="value">${item.cloud_cover.toFixed(0)}%</span><span class="unit">עננות</span></div>
-                <div class="stat"><span class="value">${item.is_good_night ? '⭐' : '☁️'}</span><span class="unit">לילה</span></div>
+                <div class="stat moon-stat"><span class="value">🌙↑ ${moonrise}</span><span class="unit">זריחת ירח</span></div>
+                <div class="stat moon-stat"><span class="value">🌙↓ ${moonset}</span><span class="unit">שקיעת ירח</span></div>
             </div>
             <div class="card-footer">${item.moon_phase}</div>
         </article>
