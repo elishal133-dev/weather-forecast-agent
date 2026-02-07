@@ -145,6 +145,8 @@ function renderStarsCard(item, rank) {
     const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
     const moonrise = item.moonrise || '--:--';
     const moonset = item.moonset || '--:--';
+    const moonStatusIcon = item.moon_status_icon || '🌙';
+    const moonStatusHe = item.moon_status_he || '';
 
     return `
         <article class="card stars-card" onclick="openStarsDetail('${item.location.id}')">
@@ -162,10 +164,13 @@ function renderStarsCard(item, rank) {
             <div class="card-stats stars-stats">
                 <div class="stat"><span class="value">${item.moon_illumination.toFixed(0)}%</span><span class="unit">ירח</span></div>
                 <div class="stat"><span class="value">${item.cloud_cover.toFixed(0)}%</span><span class="unit">עננות</span></div>
-                <div class="stat moon-stat"><span class="value">🌙↑ ${moonrise}</span><span class="unit">זריחת ירח</span></div>
-                <div class="stat moon-stat"><span class="value">🌙↓ ${moonset}</span><span class="unit">שקיעת ירח</span></div>
+                <div class="stat moon-stat"><span class="value">↑${moonrise}</span><span class="unit">זריחה</span></div>
+                <div class="stat moon-stat"><span class="value">↓${moonset}</span><span class="unit">שקיעה</span></div>
             </div>
-            <div class="card-footer">${item.moon_phase}</div>
+            <div class="card-footer">
+                <span class="moon-phase">${item.moon_phase}</span>
+                <span class="moon-status">${moonStatusIcon} ${moonStatusHe}</span>
+            </div>
         </article>
     `;
 }
@@ -336,11 +341,26 @@ async function openStarsDetail(locationId) {
 
         const daysHtml = forecast.forecast.map(d => {
             const dateStr = new Date(d.date).toLocaleDateString('he-IL', {weekday: 'long', day: 'numeric', month: 'numeric'});
-            return `<div class="forecast-day ${d.is_good_night ? 'good' : ''}">
+            const moonrise = d.moonrise || '--:--';
+            const moonset = d.moonset || '--:--';
+            const moonStatusIcon = d.moon_status_icon || '🌙';
+            const moonStatusHe = d.moon_status_he || '';
+            const sunset = d.sunset ? d.sunset.split('T')[1]?.substring(0,5) : '--:--';
+
+            return `<div class="forecast-day stars-forecast ${d.is_good_night ? 'good' : ''}">
                 <div class="date">${dateStr}</div>
                 <div class="score">${Math.round(d.score)}</div>
-                <div class="moon">${d.moon_illumination.toFixed(0)}% 🌙</div>
+                <div class="moon-info">
+                    <div class="moon-illum">${d.moon_illumination.toFixed(0)}% 🌙</div>
+                    <div class="moon-phase-small">${d.moon_phase}</div>
+                </div>
+                <div class="moon-times">
+                    <span class="moon-rise">↑${moonrise}</span>
+                    <span class="moon-set">↓${moonset}</span>
+                </div>
+                <div class="moon-status-row">${moonStatusIcon} ${moonStatusHe}</div>
                 <div class="clouds">${d.cloud_cover_night.toFixed(0)}% ☁️</div>
+                <div class="sunset-info">🌇 ${sunset}</div>
             </div>`;
         }).join('');
 
@@ -348,7 +368,7 @@ async function openStarsDetail(locationId) {
             <h2>${forecast.location.name_he}</h2>
             <p class="subtitle">${forecast.location.name}</p>
             <h3>תחזית 7 ימים</h3>
-            <div class="forecast-days">${daysHtml}</div>
+            <div class="forecast-days stars-days">${daysHtml}</div>
         `;
     } catch (err) {
         body.innerHTML = '<p>שגיאה בטעינה</p>';

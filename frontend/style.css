@@ -472,6 +472,55 @@ body {
 .forecast-day .date { font-weight: 500; }
 .forecast-day .score { font-weight: 700; }
 
+/* Stars Forecast Days */
+.stars-days .forecast-day {
+    grid-template-columns: 1.2fr 0.5fr 1fr 1fr 1.2fr 0.6fr 0.6fr;
+    align-items: center;
+}
+
+.forecast-day .moon-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.forecast-day .moon-illum { font-weight: 600; }
+.forecast-day .moon-phase-small { font-size: 0.65rem; color: var(--text-secondary); }
+
+.forecast-day .moon-times {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.8rem;
+}
+
+.forecast-day .moon-rise { color: var(--good); }
+.forecast-day .moon-set { color: var(--poor); }
+
+.forecast-day .moon-status-row {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.forecast-day .sunset-info {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Stars card footer with moon status */
+.stars-card .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stars-card .moon-phase { font-weight: 500; }
+.stars-card .moon-status {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
 /* Responsive */
 @media (min-width: 768px) {
     .main-content { max-width: 800px; margin: 0 auto; }
