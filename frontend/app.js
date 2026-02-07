@@ -287,7 +287,11 @@ async function openHeliDetail(locationId) {
             const sunrise = d.sunrise ? d.sunrise.split('T')[1]?.substring(0,5) : '';
             const sunset = d.sunset ? d.sunset.split('T')[1]?.substring(0,5) : '';
             const civilTwilight = d.civil_twilight_end ? d.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
-            return `<div class="daily-card">
+            const moonrise = d.moonrise || '--:--';
+            const moonset = d.moonset || '--:--';
+            const moonStatusIcon = d.moon_status_icon || '🌙';
+            const moonStatusHe = d.moon_status_he || '';
+            return `<div class="daily-card heli-daily">
                 <div class="daily-cloud">${d.cloud_oktas}</div>
                 <div class="daily-date">${dayName}</div>
                 <div class="daily-temp">${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
@@ -296,6 +300,11 @@ async function openHeliDetail(locationId) {
                 <div class="daily-sun-row"><span>🌅 ${sunrise}</span></div>
                 <div class="daily-sun-row"><span>🌇 ${sunset}</span></div>
                 ${civilTwilight ? `<div class="daily-sun-row"><span>🌆 ${civilTwilight}</span></div>` : ''}
+                <div class="daily-moon-times">
+                    <span class="moon-rise">🌙↑${moonrise}</span>
+                    <span class="moon-set">🌙↓${moonset}</span>
+                </div>
+                <div class="daily-moon-status">${moonStatusIcon} ${moonStatusHe}</div>
                 <div class="daily-moon">${d.moon_phase} ${d.moon_illumination}%</div>
                 <div class="daily-flyable">${d.flyable_hours}/${d.total_hours} שעות טיסה</div>
             </div>`;

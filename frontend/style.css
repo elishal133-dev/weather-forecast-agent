@@ -396,6 +396,22 @@ body {
 }
 .daily-flyable { font-weight: 600; color: var(--good); }
 
+/* Moon times in helicopter daily cards */
+.daily-moon-times {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    font-size: 0.7rem;
+}
+.daily-moon-times .moon-rise { color: var(--good); }
+.daily-moon-times .moon-set { color: var(--poor); }
+
+.daily-moon-status {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 /* Sun times - same size display */
 .daily-sun-row {
     font-size: 0.75rem;

@@ -8,8 +8,15 @@ import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, date, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import httpx
+
+# PyEphem for accurate astronomical calculations
+try:
+    import ephem
+    HAS_EPHEM = True
+except ImportError:
+    HAS_EPHEM = False
 
 logger = logging.getLogger('helicopter')
 
@@ -97,6 +104,123 @@ def moon_phase_name(dt: date) -> str:
         return "רבע אחרון 🌗"
     else:
         return "סהר הולך וקטן 🌘"
+
+
+def calculate_moon_times(target_date: date, lat: float, lon: float) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Calculate accurate moonrise and moonset times using PyEphem.
+    Returns (moonrise, moonset) as time strings or None if unavailable.
+    """
+    if not HAS_EPHEM:
+        return _estimate_moon_times_simple(target_date)
+
+    try:
+        observer = ephem.Observer()
+        observer.lat = str(lat)
+        observer.lon = str(lon)
+        observer.elevation = 0
+        observer.pressure = 0
+
+        observer.date = ephem.Date(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
+        moon = ephem.Moon()
+
+        moonrise_str = None
+        try:
+            moonrise = observer.next_rising(moon, use_center=True)
+            moonrise_dt = ephem.Date(moonrise).datetime()
+            moonrise_local = moonrise_dt + timedelta(hours=2)  # Israel timezone
+            if moonrise_local.date() == target_date:
+                moonrise_str = moonrise_local.strftime("%H:%M")
+        except (ephem.NeverUpError, ephem.AlwaysUpError):
+            pass
+
+        moonset_str = None
+        try:
+            observer.date = ephem.Date(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
+            moonset = observer.next_setting(moon, use_center=True)
+            moonset_dt = ephem.Date(moonset).datetime()
+            moonset_local = moonset_dt + timedelta(hours=2)
+            if moonset_local.date() == target_date:
+                moonset_str = moonset_local.strftime("%H:%M")
+        except (ephem.NeverUpError, ephem.AlwaysUpError):
+            pass
+
+        return (moonrise_str, moonset_str)
+
+    except Exception as e:
+        logger.warning(f"PyEphem moon calculation error: {e}")
+        return _estimate_moon_times_simple(target_date)
+
+
+def _estimate_moon_times_simple(target_date: date) -> Tuple[Optional[str], Optional[str]]:
+    """Fallback simplified moon times estimation"""
+    phase_day = (target_date - date(2000, 1, 6)).days % 29.53
+    rise_hour = 6 + (phase_day / 29.53) * 12
+    set_hour = (rise_hour + 12) % 24
+
+    rise_h = int(rise_hour) % 24
+    rise_m = int((rise_hour % 1) * 60)
+    set_h = int(set_hour) % 24
+    set_m = int((set_hour % 1) * 60)
+
+    return (f"{rise_h:02d}:{rise_m:02d}", f"{set_h:02d}:{set_m:02d}")
+
+
+def get_moon_visibility_status(moonrise: Optional[str], moonset: Optional[str], sunset: Optional[str]) -> Dict:
+    """
+    Determine moon visibility status during night hours.
+    Returns status info with Hebrew text and icon.
+    """
+    sunset_hour = 17
+    if sunset:
+        try:
+            sunset_hour = int(sunset.split('T')[1][:2])
+        except:
+            pass
+
+    def time_to_hours(t: Optional[str]) -> Optional[float]:
+        if not t:
+            return None
+        try:
+            parts = t.split(':')
+            return int(parts[0]) + int(parts[1]) / 60
+        except:
+            return None
+
+    rise_h = time_to_hours(moonrise)
+    set_h = time_to_hours(moonset)
+    night_start = sunset_hour
+
+    if rise_h is None and set_h is None:
+        return {"status": "unknown", "status_he": "לא ידוע", "icon": "❓"}
+
+    if rise_h is not None and set_h is not None:
+        if rise_h < set_h:
+            if rise_h >= night_start:
+                return {"status": "rises_at_night", "status_he": f"עולה ב-{moonrise}", "icon": "🌙↑"}
+            elif set_h <= night_start:
+                return {"status": "not_visible", "status_he": "לא נראה בלילה", "icon": "🌑"}
+            elif set_h > night_start:
+                return {"status": "sets_at_night", "status_he": f"שוקע ב-{moonset}", "icon": "🌙↓"}
+        else:
+            if rise_h >= night_start:
+                return {"status": "rises_at_night", "status_he": f"עולה ב-{moonrise}", "icon": "🌙↑"}
+            else:
+                return {"status": "sets_at_night", "status_he": f"שוקע ב-{moonset}", "icon": "🌙↓"}
+
+    if rise_h is not None:
+        if rise_h >= night_start or rise_h <= 4:
+            return {"status": "rises_at_night", "status_he": f"עולה ב-{moonrise}", "icon": "🌙↑"}
+        else:
+            return {"status": "visible_all_night", "status_he": "נראה כל הלילה", "icon": "🌕"}
+
+    if set_h is not None:
+        if set_h >= night_start or set_h <= 4:
+            return {"status": "sets_at_night", "status_he": f"שוקע ב-{moonset}", "icon": "🌙↓"}
+        else:
+            return {"status": "not_visible", "status_he": "לא נראה בלילה", "icon": "🌑"}
+
+    return {"status": "unknown", "status_he": "לא ידוע", "icon": "❓"}
 
 
 class HelicopterService:
@@ -276,6 +400,10 @@ class HelicopterService:
                 moon_ill = moon_illumination(day_date)
                 moon_ph = moon_phase_name(day_date)
 
+                # Calculate moon rise/set times
+                moonrise, moonset = calculate_moon_times(day_date, loc["lat"], loc["lon"])
+                moon_status = get_moon_visibility_status(moonrise, moonset, sunset)
+
                 # Get hours for this day (safe division)
                 day_hours = [c for c in conditions if c["time"].startswith(day_str)]
                 day_hours_count = len(day_hours) if len(day_hours) > 0 else 1
@@ -300,6 +428,11 @@ class HelicopterService:
                     "sunrise": sunrise,
                     "sunset": sunset,
                     "civil_twilight_end": civil_twilight,
+                    "moonrise": moonrise,
+                    "moonset": moonset,
+                    "moon_status": moon_status["status"],
+                    "moon_status_he": moon_status["status_he"],
+                    "moon_status_icon": moon_status["icon"],
                     "moon_illumination": moon_ill,
                     "moon_phase": moon_ph,
                     "flyable_hours": flyable_hours,
