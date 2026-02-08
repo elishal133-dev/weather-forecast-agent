@@ -3,7 +3,7 @@
  * Handles caching for offline support and push notifications
  */
 
-const CACHE_NAME = 'kite-forecast-v5';
+const CACHE_NAME = 'kite-forecast-v6';
 const STATIC_ASSETS = [
     '/',
     '/style.css',

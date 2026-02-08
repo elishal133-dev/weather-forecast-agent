@@ -261,10 +261,22 @@ body {
 
 /* Moon rise/set stats */
 .moon-stat .value {
-    font-size: 0.875rem !important;
+    font-size: 0.8rem !important;
 }
 .moon-stat {
     background: rgba(255, 215, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Moon status stat */
+.moon-status-stat {
+    background: rgba(255, 215, 0, 0.1);
+}
+.moon-status-stat .value {
+    font-size: 0.75rem !important;
+    white-space: nowrap;
 }
 
 .stat {
