@@ -4,10 +4,13 @@ Fetches wind and marine (wave) data for kite spots
 """
 
 import asyncio
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 import httpx
+
+logger = logging.getLogger('weather')
 
 
 @dataclass
@@ -113,7 +116,7 @@ class WeatherService:
             return wind_data
 
         except Exception as e:
-            print(f"Error fetching wind data: {e}")
+            logger.error(f"Error fetching wind data: {e}")
             return []
 
     async def fetch_wave_data(
@@ -157,7 +160,7 @@ class WeatherService:
 
         except Exception as e:
             # Marine data may not be available for inland locations (Kinneret)
-            print(f"Note: Wave data not available: {e}")
+            logger.debug(f"Wave data not available (inland location): {e}")
             return None
 
     async def fetch_spot_forecast(
@@ -224,7 +227,7 @@ class WeatherService:
                 if isinstance(result, SpotForecast):
                     forecasts.append(result)
                 else:
-                    print(f"Error in batch: {result}")
+                    logger.warning(f"Error in batch: {result}")
 
             # Small delay between batches
             if i + batch_size < len(tasks):
@@ -241,22 +244,24 @@ def get_current_conditions(forecast: SpotForecast) -> Dict[str, Any]:
     # Find nearest wind data point
     current_wind = None
     if forecast.wind_data:
+        # Use first data point as fallback (most recent forecast hour)
+        current_wind = forecast.wind_data[0]
         for wind in forecast.wind_data:
-            if wind.timestamp >= now:
+            # Compare without timezone info to avoid naive vs aware issues
+            wind_time = wind.timestamp.replace(tzinfo=None) if wind.timestamp.tzinfo else wind.timestamp
+            if wind_time >= now:
                 current_wind = wind
                 break
-        if not current_wind and forecast.wind_data:
-            current_wind = forecast.wind_data[-1]
 
     # Find nearest wave data point
     current_wave = None
     if forecast.wave_data:
+        current_wave = forecast.wave_data[0]
         for wave in forecast.wave_data:
-            if wave.timestamp >= now:
+            wave_time = wave.timestamp.replace(tzinfo=None) if wave.timestamp.tzinfo else wave.timestamp
+            if wave_time >= now:
                 current_wave = wave
                 break
-        if not current_wave and forecast.wave_data:
-            current_wave = forecast.wave_data[-1]
 
     return {
         "spot_id": forecast.spot_id,

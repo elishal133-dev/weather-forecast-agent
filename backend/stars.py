@@ -2,13 +2,24 @@
 Stargazing Forecast Module
 Evaluates conditions for night sky observation
 Factors: Moon rise/phase, cloud cover, light pollution
+Uses PyEphem for accurate astronomical calculations
 """
 
+import logging
+import math
 from dataclasses import dataclass
 from datetime import datetime, date, time, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import httpx
-import math
+
+# PyEphem for accurate astronomical calculations
+try:
+    import ephem
+    HAS_EPHEM = True
+except ImportError:
+    HAS_EPHEM = False
+
+logger = logging.getLogger('stars')
 
 # Best stargazing locations in Israel (low light pollution)
 STARGAZING_LOCATIONS = [
@@ -61,22 +72,23 @@ class StarsService:
         lunar_cycle = 29.53059  # days
 
         phase_day = days_since % lunar_cycle
-        illumination = (1 - math.cos(2 * math.pi * phase_day / lunar_cycle)) / 2 * 100
+        phase_fraction = phase_day / lunar_cycle
+        illumination = (1 - math.cos(2 * math.pi * phase_fraction)) / 2 * 100
 
-        # Phase names
-        if phase_day < 1.85:
+        # Phase names (using fraction: 0=new, 0.5=full)
+        if phase_fraction < 0.03 or phase_fraction > 0.97:
             phase = "New Moon"
-        elif phase_day < 7.38:
+        elif phase_fraction < 0.22:
             phase = "Waxing Crescent"
-        elif phase_day < 9.23:
+        elif phase_fraction < 0.28:
             phase = "First Quarter"
-        elif phase_day < 14.77:
+        elif phase_fraction < 0.47:
             phase = "Waxing Gibbous"
-        elif phase_day < 16.61:
+        elif phase_fraction < 0.53:
             phase = "Full Moon"
-        elif phase_day < 22.15:
+        elif phase_fraction < 0.72:
             phase = "Waning Gibbous"
-        elif phase_day < 23.99:
+        elif phase_fraction < 0.78:
             phase = "Last Quarter"
         else:
             phase = "Waning Crescent"
@@ -87,21 +99,77 @@ class StarsService:
             "is_good_for_stars": illumination < 40  # Less than 40% is good
         }
 
-    def _estimate_moonrise(self, target_date: date, lat: float) -> Optional[str]:
-        """Estimate moonrise time (simplified calculation)"""
-        # This is a simplified estimation
-        # In production, use PyEphem or Skyfield for accuracy
-        moon = self._calculate_moon_phase(target_date)
+    def _calculate_moon_times(self, target_date: date, lat: float, lon: float) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Calculate accurate moonrise and moonset times using PyEphem.
+        Returns (moonrise, moonset) as ISO time strings or None if unavailable.
+        """
+        if not HAS_EPHEM:
+            # Fallback to simplified estimation
+            return self._estimate_moon_times_simple(target_date)
+
+        try:
+            # Create observer for the location
+            observer = ephem.Observer()
+            observer.lat = str(lat)
+            observer.lon = str(lon)
+            observer.elevation = 0
+            observer.pressure = 0  # Disable atmospheric refraction for consistency
+
+            # Set date to start of day (midnight local time)
+            # Convert to UTC (Israel is UTC+2 or UTC+3)
+            observer.date = ephem.Date(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
+
+            moon = ephem.Moon()
+
+            # Calculate moonrise
+            moonrise_str = None
+            try:
+                moonrise = observer.next_rising(moon, use_center=True)
+                moonrise_dt = ephem.Date(moonrise).datetime()
+                # Add 2 hours for Israel timezone (approximate)
+                moonrise_local = moonrise_dt + timedelta(hours=2)
+                if moonrise_local.date() == target_date:
+                    moonrise_str = moonrise_local.strftime("%H:%M")
+            except (ephem.NeverUpError, ephem.AlwaysUpError):
+                pass
+
+            # Calculate moonset
+            moonset_str = None
+            try:
+                # Reset observer date
+                observer.date = ephem.Date(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
+                moonset = observer.next_setting(moon, use_center=True)
+                moonset_dt = ephem.Date(moonset).datetime()
+                # Add 2 hours for Israel timezone (approximate)
+                moonset_local = moonset_dt + timedelta(hours=2)
+                if moonset_local.date() == target_date:
+                    moonset_str = moonset_local.strftime("%H:%M")
+            except (ephem.NeverUpError, ephem.AlwaysUpError):
+                pass
+
+            return (moonrise_str, moonset_str)
+
+        except Exception as e:
+            logger.warning(f"PyEphem moon calculation error: {e}")
+            return self._estimate_moon_times_simple(target_date)
+
+    def _estimate_moon_times_simple(self, target_date: date) -> Tuple[Optional[str], Optional[str]]:
+        """Fallback simplified moon times estimation"""
         phase_day = (target_date - date(2000, 1, 6)).days % 29.53
 
         # Rough moonrise estimation based on phase
-        # New moon rises at sunrise, full moon at sunset
-        base_hour = 6 + (phase_day / 29.53) * 12
+        # New moon rises at sunrise (~6am), full moon at sunset (~18pm)
+        rise_hour = 6 + (phase_day / 29.53) * 12
+        # Moonset is roughly 12 hours after moonrise
+        set_hour = (rise_hour + 12) % 24
 
-        hour = int(base_hour) % 24
-        minute = int((base_hour % 1) * 60)
+        rise_h = int(rise_hour) % 24
+        rise_m = int((rise_hour % 1) * 60)
+        set_h = int(set_hour) % 24
+        set_m = int((set_hour % 1) * 60)
 
-        return f"{hour:02d}:{minute:02d}"
+        return (f"{rise_h:02d}:{rise_m:02d}", f"{set_h:02d}:{set_m:02d}")
 
     async def get_forecast(self, location: str, days: int = 7) -> Optional[Dict]:
         """Get stargazing forecast for a location"""
@@ -146,11 +214,11 @@ class StarsService:
                         cloud = hourly.get("cloud_cover", [])[j] or 0
                         night_clouds.append(cloud)
 
-                avg_cloud = sum(night_clouds) / len(night_clouds) if night_clouds else 50
+                avg_cloud = sum(night_clouds) / len(night_clouds) if len(night_clouds) > 0 else 50
 
                 # Moon data
                 moon = self._calculate_moon_phase(target_date)
-                moonrise = self._estimate_moonrise(target_date, loc["lat"])
+                moonrise, moonset = self._calculate_moon_times(target_date, loc["lat"], loc["lon"])
 
                 # Calculate stargazing score
                 # Factors: clouds (40%), moon (40%), light pollution (20%)
@@ -175,6 +243,7 @@ class StarsService:
                     "sunset": sunset,
                     "sunrise": sunrise,
                     "moonrise": moonrise,
+                    "moonset": moonset,
                     "moon_phase": moon["phase"],
                     "moon_illumination": moon["illumination"],
                     "cloud_cover_night": round(avg_cloud, 1),
@@ -190,7 +259,7 @@ class StarsService:
             }
 
         except Exception as e:
-            print(f"Error fetching stars forecast: {e}")
+            logger.error(f"Error fetching stars forecast: {e}")
             return None
 
     async def get_best_tonight(self) -> Dict:
@@ -222,18 +291,24 @@ class StarsService:
 
     async def get_rankings(self) -> Dict:
         """Get all locations ranked by stargazing conditions tonight"""
-        rankings = []
+        import asyncio
 
-        for loc in STARGAZING_LOCATIONS:
-            forecast = await self.get_forecast(loc["id"], days=1)
-            if forecast and forecast["forecast"]:
+        # Fetch ALL locations concurrently to avoid 30s Render timeout
+        tasks = [self.get_forecast(loc["id"], days=1) for loc in STARGAZING_LOCATIONS]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        rankings = []
+        for forecast in results:
+            if isinstance(forecast, dict) and forecast.get("forecast"):
                 tonight = forecast["forecast"][0]
                 rankings.append({
-                    "location": loc,
+                    "location": forecast["location"],
                     "score": tonight["score"],
                     "rating": tonight["rating"],
                     "moon_phase": tonight["moon_phase"],
                     "moon_illumination": tonight["moon_illumination"],
+                    "moonrise": tonight.get("moonrise"),
+                    "moonset": tonight.get("moonset"),
                     "cloud_cover": tonight["cloud_cover_night"],
                     "is_good_night": tonight["is_good_night"]
                 })

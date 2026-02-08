@@ -20,8 +20,8 @@ const translations = {
         'Excellent': 'מעולה', 'Good': 'טוב', 'Fair': 'סביר', 'Poor': 'חלש'
     },
     modes: {
-        'helicopter': 'טיסות מסוקים',
-        'kite': 'קייטסרפינג',
+        'helicopter': 'טיסות',
+        'kite': 'קייט',
         'stars': 'צפייה בכוכבים'
     }
 };
@@ -59,17 +59,20 @@ function switchMode(mode) {
 async function fetchKiteRankings() {
     const params = new URLSearchParams({ limit: 50 });
     if (currentRegion !== 'all') params.set('region', currentRegion);
-    const res = await fetch(`/api/kite/rankings?${params}`);
+    const res = await fetch(`/api/kite/rankings?${params}`, {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
 }
 
 async function fetchHelicopterRankings() {
-    const res = await fetch('/api/helicopter/rankings');
+    const res = await fetch('/api/helicopter/rankings', {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
 }
 
 async function fetchStarsRankings() {
-    const res = await fetch('/api/stars/rankings');
+    const res = await fetch('/api/stars/rankings', {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
 }
 
@@ -77,6 +80,7 @@ async function fetchStarsRankings() {
 function renderKiteCard(item, rank) {
     const rating = item.overall_rating || 'fair';
     const wave = item.wave_height_m !== null ? `${item.wave_height_m.toFixed(1)}m` : 'שטוח';
+    const waveDanger = item.wave_danger ? 'danger' : '';
 
     return `
         <article class="card kite-card" onclick="openKiteDetail('${item.spot_id}')">
@@ -92,10 +96,11 @@ function renderKiteCard(item, rank) {
                     <span class="label">${translations.ratings[rating] || rating}</span>
                 </div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats kite-stats">
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
-                <div class="stat"><span class="value">${item.wind_direction}</span><span class="unit">כיוון</span></div>
-                <div class="stat"><span class="value">${wave}</span><span class="unit">גלים</span></div>
+                <div class="stat"><span class="value">${item.wind_gusts_knots.toFixed(0)}</span><span class="unit">משבים</span></div>
+                <div class="stat"><span class="value">${item.wind_direction_deg || item.wind_direction}°</span><span class="unit">כיוון</span></div>
+                <div class="stat ${waveDanger}"><span class="value">${wave}</span><span class="unit">גלים</span></div>
             </div>
             <div class="card-footer">${item.recommendation}</div>
         </article>
@@ -104,26 +109,32 @@ function renderKiteCard(item, rank) {
 
 function renderHelicopterCard(item, rank) {
     const flyable = item.is_flyable;
-    const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
+    const sunrise = item.sunrise ? item.sunrise.split('T')[1]?.substring(0,5) : '';
+    const sunset = item.sunset ? item.sunset.split('T')[1]?.substring(0,5) : '';
+    const civilTwilight = item.civil_twilight_end ? item.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
 
     return `
         <article class="card heli-card" onclick="openHeliDetail('${item.location.id}')">
             <div class="card-header">
                 <div class="card-info">
-                    <span class="rank">#${rank}</span>
                     <h3>${item.location.name_he}</h3>
                     <span class="subtitle">${item.location.name}</span>
-                </div>
-                <div class="score-badge ${scoreClass}">
-                    <span class="score">${Math.round(item.score)}</span>
-                    <span class="label">${flyable ? 'טיסה' : 'לא טיסה'}</span>
+                    <span class="flyable-status ${flyable ? 'good' : 'poor'}">${flyable ? '✓ טיסה' : '✗ לא טיסה'}</span>
                 </div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats heli-stats">
                 <div class="stat"><span class="value">${item.wind_speed_knots.toFixed(0)}</span><span class="unit">קשר</span></div>
-                <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
-                <div class="stat"><span class="value">${flyable ? '✓' : '✗'}</span><span class="unit">סטטוס</span></div>
+                <div class="stat"><span class="value">${item.wind_direction_deg}°</span><span class="unit">כיוון</span></div>
+                <div class="stat"><span class="value">${item.temperature_c.toFixed(0)}°</span><span class="unit">טמפ׳</span></div>
+                <div class="stat cloud-stat"><span class="value">${item.cloud_oktas}</span><span class="unit">עננות</span></div>
             </div>
+            <div class="card-stats heli-stats">
+                <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
+                <div class="stat"><span class="value">${(item.cloud_base_ft/1000).toFixed(1)}k</span><span class="unit">ft בסיס</span></div>
+                <div class="stat sun-stat"><span class="value">🌅${sunrise}</span><span class="value">🌇${sunset}</span></div>
+                <div class="stat"><span class="value">${item.moon_illumination}%</span><span class="unit">ירח</span></div>
+            </div>
+            ${civilTwilight ? `<div class="card-stats heli-stats"><div class="stat twilight-stat" style="grid-column: span 4"><span class="value">🌆 דמדומים: עד ${civilTwilight}</span></div></div>` : ''}
             ${item.warnings.length ? `<div class="card-footer warning">${item.warnings.join(', ')}</div>` : ''}
         </article>
     `;
@@ -132,6 +143,8 @@ function renderHelicopterCard(item, rank) {
 function renderStarsCard(item, rank) {
     const rating = item.rating;
     const scoreClass = item.score >= 70 ? 'good' : item.score >= 50 ? 'fair' : 'poor';
+    const moonrise = item.moonrise || '--:--';
+    const moonset = item.moonset || '--:--';
 
     return `
         <article class="card stars-card" onclick="openStarsDetail('${item.location.id}')">
@@ -146,10 +159,11 @@ function renderStarsCard(item, rank) {
                     <span class="label">${translations.ratings[rating] || rating}</span>
                 </div>
             </div>
-            <div class="card-stats">
+            <div class="card-stats stars-stats">
                 <div class="stat"><span class="value">${item.moon_illumination.toFixed(0)}%</span><span class="unit">ירח</span></div>
                 <div class="stat"><span class="value">${item.cloud_cover.toFixed(0)}%</span><span class="unit">עננות</span></div>
-                <div class="stat"><span class="value">${item.is_good_night ? '⭐' : '☁️'}</span><span class="unit">לילה</span></div>
+                <div class="stat moon-stat"><span class="value">🌙↑ ${moonrise}</span><span class="unit">זריחת ירח</span></div>
+                <div class="stat moon-stat"><span class="value">🌙↓ ${moonset}</span><span class="unit">שקיעת ירח</span></div>
             </div>
             <div class="card-footer">${item.moon_phase}</div>
         </article>
@@ -165,6 +179,7 @@ async function loadData() {
     show(loading);
     hide(error);
     hide(content);
+    loading.querySelector('p').textContent = `טוען ${translations.modes[currentMode]}...`;
 
     try {
         let result;
@@ -172,23 +187,45 @@ async function loadData() {
         if (currentMode === 'kite') {
             result = await fetchKiteRankings();
             data.kite = result;
-            content.innerHTML = result.rankings.map((item, i) => renderKiteCard(item, i + 1)).join('');
+            if (!result.rankings || result.rankings.length === 0) {
+                content.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:2rem">אין נתונים זמינים כרגע. נסה שוב בעוד דקה.</p>';
+            } else {
+                content.innerHTML = result.rankings.map((item, i) => renderKiteCard(item, i + 1)).join('');
+            }
         } else if (currentMode === 'helicopter') {
             result = await fetchHelicopterRankings();
             data.helicopter = result;
-            content.innerHTML = result.rankings.map((item, i) => renderHelicopterCard(item, i + 1)).join('');
+            if (!result.rankings || result.rankings.length === 0) {
+                content.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:2rem">אין נתונים זמינים כרגע. נסה שוב בעוד דקה.</p>';
+            } else {
+                content.innerHTML = result.rankings.map((item, i) => renderHelicopterCard(item, i + 1)).join('');
+            }
         } else if (currentMode === 'stars') {
             result = await fetchStarsRankings();
             data.stars = result;
-            content.innerHTML = result.rankings.map((item, i) => renderStarsCard(item, i + 1)).join('');
+            if (!result.rankings || result.rankings.length === 0) {
+                content.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:2rem">אין נתונים זמינים כרגע. נסה שוב בעוד דקה.</p>';
+            } else {
+                content.innerHTML = result.rankings.map((item, i) => renderStarsCard(item, i + 1)).join('');
+            }
         }
 
         hide(loading);
         show(content);
 
+        // Show last updated
+        const updateEl = $('last-update');
+        const fetchedAt = result?.fetched_at || result?.last_update;
+        if (fetchedAt) {
+            const t = new Date(fetchedAt).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+            updateEl.textContent = `עודכן: ${t}`;
+            show(updateEl);
+        }
+
     } catch (err) {
         console.error('Error loading data:', err);
         hide(loading);
+        $('error').querySelector('p').textContent = `שגיאה בטעינת ${translations.modes[currentMode]}`;
         show(error);
     }
 }
@@ -202,22 +239,25 @@ async function openKiteDetail(spotId) {
     body.innerHTML = '<div class="loading-container"><div class="spinner"></div></div>';
 
     try {
-        const res = await fetch(`/api/kite/forecast/${spotId}?hours=12`);
+        const res = await fetch(`/api/kite/forecast/${spotId}?hours=24`, {signal: AbortSignal.timeout(60000)});
         const forecast = await res.json();
 
         const hoursHtml = forecast.hourly.map(h => {
             const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'});
+            const wave = h.wave_height_m != null ? `${h.wave_height_m.toFixed(1)}m` : '-';
+            const waveDanger = h.wave_height_m != null && h.wave_height_m > 1.5 ? ' danger' : '';
             return `<div class="forecast-hour">
                 <div class="time">${time}</div>
-                <div class="wind">${Math.round(h.wind_speed_knots)}</div>
-                <div class="dir">${h.wind_direction_cardinal}</div>
+                <div class="wind">${Math.round(h.wind_speed_knots)}kts</div>
+                <div class="dir">${h.wind_direction_deg || h.wind_direction}°</div>
+                <div class="wave${waveDanger}">${wave}</div>
             </div>`;
         }).join('');
 
         body.innerHTML = `
             <h2>${forecast.spot_name_he}</h2>
             <p class="subtitle">${forecast.spot_name}</p>
-            <h3>תחזית 12 שעות (רוח בקשר)</h3>
+            <h3>תחזית 24 שעות</h3>
             <div class="forecast-hours">${hoursHtml}</div>
         `;
     } catch (err) {
@@ -233,24 +273,50 @@ async function openHeliDetail(locationId) {
     body.innerHTML = '<div class="loading-container"><div class="spinner"></div></div>';
 
     try {
-        const res = await fetch(`/api/helicopter/forecast/${locationId}?days=2`);
+        const res = await fetch(`/api/helicopter/forecast/${locationId}?days=3`, {signal: AbortSignal.timeout(60000)});
         const forecast = await res.json();
 
-        const hoursHtml = forecast.forecast.slice(0, 24).map(h => {
-            const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit'});
-            const status = h.is_flyable ? '✓' : '✗';
-            return `<div class="forecast-hour ${h.is_flyable ? 'good' : 'poor'}">
+        // Daily summary cards (no ranking)
+        const dailyHtml = (forecast.daily || []).map(d => {
+            const dayName = new Date(d.date).toLocaleDateString('he-IL', {weekday: 'short', day: 'numeric', month: 'numeric'});
+            const sunrise = d.sunrise ? d.sunrise.split('T')[1]?.substring(0,5) : '';
+            const sunset = d.sunset ? d.sunset.split('T')[1]?.substring(0,5) : '';
+            const civilTwilight = d.civil_twilight_end ? d.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
+            return `<div class="daily-card">
+                <div class="daily-cloud">${d.cloud_oktas}</div>
+                <div class="daily-date">${dayName}</div>
+                <div class="daily-temp">${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
+                <div class="daily-wind">💨 ${d.wind_max_knots?.toFixed(0)}kts</div>
+                <div class="daily-cloud-base">☁️ ${(d.cloud_base_avg_ft/1000).toFixed(1)}k ft</div>
+                <div class="daily-sun-row"><span>🌅 ${sunrise}</span></div>
+                <div class="daily-sun-row"><span>🌇 ${sunset}</span></div>
+                ${civilTwilight ? `<div class="daily-sun-row"><span>🌆 ${civilTwilight}</span></div>` : ''}
+                <div class="daily-moon">${d.moon_phase} ${d.moon_illumination}%</div>
+                <div class="daily-flyable">${d.flyable_hours}/${d.total_hours} שעות טיסה</div>
+            </div>`;
+        }).join('');
+
+        // 3-hour forecast (filter every 3rd hour)
+        const threeHourData = forecast.forecast.filter((_, i) => i % 3 === 0).slice(0, 24);
+        const hoursHtml = threeHourData.map(h => {
+            const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'});
+            return `<div class="forecast-hour heli-forecast ${h.is_flyable ? 'good' : 'poor'}">
                 <div class="time">${time}</div>
-                <div class="wind">${Math.round(h.wind_speed_knots)}</div>
-                <div class="dir">${status}</div>
+                <div class="cloud-oktas">${h.cloud_oktas}</div>
+                <div class="wind">${Math.round(h.wind_speed_knots)}kts</div>
+                <div class="dir">${h.wind_direction_deg}°</div>
+                <div class="temp">${h.temperature_c.toFixed(0)}°</div>
+                <div class="vis">${h.visibility_km.toFixed(0)}km</div>
             </div>`;
         }).join('');
 
         body.innerHTML = `
             <h2>${forecast.location.name_he}</h2>
             <p class="subtitle">${forecast.location.name}</p>
-            <h3>תחזית 24 שעות (רוח בקשר)</h3>
-            <div class="forecast-hours">${hoursHtml}</div>
+            <h3>תחזית יומית</h3>
+            <div class="daily-cards">${dailyHtml}</div>
+            <h3>תחזית 3 שעות</h3>
+            <div class="forecast-hours heli-hours">${hoursHtml}</div>
         `;
     } catch (err) {
         body.innerHTML = '<p>שגיאה בטעינה</p>';
@@ -269,7 +335,7 @@ async function openStarsDetail(locationId) {
         const forecast = await res.json();
 
         const daysHtml = forecast.forecast.map(d => {
-            const dateStr = new Date(d.date).toLocaleDateString('he-IL', {weekday: 'short', day: 'numeric'});
+            const dateStr = new Date(d.date).toLocaleDateString('he-IL', {weekday: 'long', day: 'numeric', month: 'numeric'});
             return `<div class="forecast-day ${d.is_good_night ? 'good' : ''}">
                 <div class="date">${dateStr}</div>
                 <div class="score">${Math.round(d.score)}</div>

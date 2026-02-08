@@ -185,6 +185,13 @@ body {
 
 .hidden { display: none !important; }
 
+.last-update {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: var(--spacing-sm) 0;
+}
+
 /* Cards */
 .card {
     background: var(--surface);
@@ -208,6 +215,9 @@ body {
 .card-info h3 { font-size: 1.125rem; margin: var(--spacing-xs) 0; }
 .card-info .subtitle { font-size: 0.875rem; color: var(--text-secondary); display: block; }
 .card-info .region { font-size: 0.75rem; color: var(--text-secondary); }
+.card-info .flyable-status { font-size: 0.75rem; font-weight: 600; display: block; margin-top: var(--spacing-xs); }
+.card-info .flyable-status.good { color: var(--good); }
+.card-info .flyable-status.poor { color: var(--poor); }
 
 /* Score Badge */
 .score-badge {
@@ -235,7 +245,26 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-sm);
-    padding: 0 var(--spacing-md) var(--spacing-md);
+    padding: 0 var(--spacing-md) var(--spacing-sm);
+}
+
+.heli-card .card-stats,
+.kite-stats,
+.heli-stats,
+.stars-stats {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.heli-card .cloud-stat .value {
+    font-size: 1.5rem;
+}
+
+/* Moon rise/set stats */
+.moon-stat .value {
+    font-size: 0.875rem !important;
+}
+.moon-stat {
+    background: rgba(255, 215, 0, 0.1);
 }
 
 .stat {
@@ -247,6 +276,9 @@ body {
 
 .stat .value { font-size: 1.125rem; font-weight: 600; display: block; }
 .stat .unit { font-size: 0.625rem; color: var(--text-secondary); text-transform: uppercase; }
+.stat.danger { background: rgba(244,67,54,0.3); }
+.stat.danger .value { color: var(--poor); }
+.stat.danger .unit { color: var(--poor); }
 
 /* Card Footer */
 .card-footer {
@@ -327,9 +359,96 @@ body {
 .forecast-hour .time { font-size: 0.75rem; color: var(--text-secondary); }
 .forecast-hour .wind { font-size: 1.125rem; font-weight: 600; }
 .forecast-hour .dir { font-size: 0.75rem; }
+.forecast-hour .wave { font-size: 0.75rem; color: var(--text-secondary); }
+.forecast-hour .wave.danger { color: var(--poor); font-weight: 600; }
 
 .forecast-hour.good { background: rgba(0,200,83,0.2); }
 .forecast-hour.poor { background: rgba(244,67,54,0.2); }
+
+/* Daily Cards (Helicopter detail) */
+.daily-cards {
+    display: flex;
+    gap: var(--spacing-sm);
+    overflow-x: auto;
+    padding-bottom: var(--spacing-md);
+}
+
+.daily-cards::-webkit-scrollbar { display: none; }
+
+.daily-card {
+    flex-shrink: 0;
+    min-width: 160px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.daily-date { font-weight: 600; font-size: 0.875rem; }
+.daily-cloud { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+.daily-temp { font-size: 1rem; font-weight: 600; }
+.daily-wind, .daily-cloud-base, .daily-sun, .daily-moon, .daily-flyable {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.daily-flyable { font-weight: 600; color: var(--good); }
+
+/* Sun times - same size display */
+.daily-sun-row {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.daily-sun-row span {
+    font-size: 0.75rem;
+}
+
+/* Helicopter sun stat - same size for sunrise/sunset */
+.sun-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sun-stat .value {
+    font-size: 0.875rem !important;
+    font-weight: 500;
+}
+
+/* Twilight stat */
+.twilight-stat {
+    background: rgba(255, 152, 0, 0.15);
+}
+.twilight-stat .value {
+    font-size: 0.8rem !important;
+    color: #ffb74d;
+}
+
+.forecast-hour .cloud { font-size: 0.875rem; }
+.forecast-hour .temp { font-size: 0.75rem; color: var(--text-secondary); }
+
+/* Helicopter forecast styling */
+.heli-hours {
+    gap: var(--spacing-md);
+}
+
+.forecast-hour.heli-forecast {
+    min-width: 70px;
+    padding: var(--spacing-md) var(--spacing-sm);
+}
+
+.forecast-hour .cloud-oktas {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: var(--spacing-xs) 0;
+}
+
+.forecast-hour .vis {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
 
 /* Forecast Days */
 .forecast-days {

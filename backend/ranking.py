@@ -39,6 +39,7 @@ class SpotRating:
     wind_speed_knots: float
     wind_gusts_knots: float
     wind_direction: str
+    wind_direction_deg: int
     wave_height_m: Optional[float]
 
     # Descriptive
@@ -60,34 +61,26 @@ def calculate_wind_score(wind_speed: float, wind_gusts: float) -> float:
     Rideable: 10-35 knots
     """
     if wind_speed < 8:
-        # Too light
-        return max(0, wind_speed * 5)  # 0-40
+        base = max(0, wind_speed * 5)  # 0-40
     elif wind_speed < 12:
-        # Light but rideable for big kites
-        return 40 + (wind_speed - 8) * 7.5  # 40-70
+        base = 40 + (wind_speed - 8) * 7.5  # 40-70
     elif wind_speed < 15:
-        # Good wind
-        return 70 + (wind_speed - 12) * 5  # 70-85
+        base = 70 + (wind_speed - 12) * 5  # 70-85
     elif wind_speed <= 25:
-        # Ideal wind range
-        return 85 + min(15, (wind_speed - 15)) * 1  # 85-100
+        base = 85 + min(15, (wind_speed - 15)) * 1  # 85-100
     elif wind_speed <= 30:
-        # Strong but still good
-        return 100 - (wind_speed - 25) * 3  # 100-85
+        base = 100 - (wind_speed - 25) * 3  # 100-85
     elif wind_speed <= 35:
-        # Very strong, experts only
-        return 85 - (wind_speed - 30) * 5  # 85-60
+        base = 85 - (wind_speed - 30) * 5  # 85-60
     else:
-        # Too strong for most
-        return max(20, 60 - (wind_speed - 35) * 4)
+        base = max(20, 60 - (wind_speed - 35) * 4)
 
     # Penalize gusty conditions (difference between gusts and speed)
-    gust_penalty = 0
     gust_diff = wind_gusts - wind_speed
     if gust_diff > 10:
-        gust_penalty = min(20, (gust_diff - 10) * 2)
+        base -= min(20, (gust_diff - 10) * 2)
 
-    return max(0, min(100, calculate_wind_score.__wrapped__(wind_speed, wind_gusts) - gust_penalty))
+    return max(0, min(100, base))
 
 
 def calculate_wave_score(wave_height: Optional[float], spot: KiteSpot) -> float:
@@ -313,9 +306,9 @@ def rate_spot(
     direction_score = calculate_direction_score(wind_dir_degrees, spot.optimal_wind_directions)
 
     # Calculate overall score
-    # Weights: Wind 50%, Wave safety 30%, Direction match 20%
-    # Per requirements: wind first, then waves
-    overall_score = (wind_score * 0.50) + (wave_score * 0.30) + (direction_score * 0.20)
+    # Weights: Wind 60%, Direction match 30%, Wave safety 10%
+    # Per requirements: wind first priority, waves low weight unless dangerous
+    overall_score = (wind_score * 0.60) + (direction_score * 0.30) + (wave_score * 0.10)
 
     # Apply bonus/penalty for direction match
     if direction_score < 50:
@@ -341,6 +334,7 @@ def rate_spot(
         wind_speed_knots=round(wind_speed, 1),
         wind_gusts_knots=round(wind_gusts, 1),
         wind_direction=wind_dir_cardinal,
+        wind_direction_deg=wind_dir_degrees,
         wave_height_m=round(wave_height, 2) if wave_height else None,
         wind_description=get_wind_description(wind_speed, wind_gusts),
         wave_description=get_wave_description(wave_height),

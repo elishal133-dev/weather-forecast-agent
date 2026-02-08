@@ -4,8 +4,19 @@ services:
     runtime: python
     plan: free
     rootDir: backend
-    buildCommand: pip install fastapi uvicorn httpx pydantic
+    buildCommand: pip install fastapi uvicorn httpx pydantic ephem
     startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
+      # Optional: Add API keys for additional weather sources
+      # Get free keys from:
+      # - OpenWeatherMap: https://openweathermap.org/api (1000 calls/day free)
+      # - WeatherAPI: https://www.weatherapi.com/ (1M calls/month free)
+      # - Windy: https://api.windy.com/ (free tier available)
+      - key: OPENWEATHERMAP_API_KEY
+        sync: false
+      - key: WEATHERAPI_KEY
+        sync: false
+      - key: WINDY_API_KEY
+        sync: false

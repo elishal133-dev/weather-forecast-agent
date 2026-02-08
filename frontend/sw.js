@@ -3,12 +3,12 @@
  * Handles caching for offline support and push notifications
  */
 
-const CACHE_NAME = 'kite-forecast-v1';
+const CACHE_NAME = 'kite-forecast-v3';
 const STATIC_ASSETS = [
     '/',
-    '/static/style.css',
-    '/static/app.js',
-    '/static/manifest.json'
+    '/style.css',
+    '/app.js',
+    '/manifest.json'
 ];
 
 // ============ Install Event ============
@@ -114,8 +114,8 @@ self.addEventListener('push', (event) => {
     let data = {
         title: 'Kite Forecast Israel',
         body: 'Check the latest conditions!',
-        icon: '/static/icons/icon-192.png',
-        badge: '/static/icons/badge-72.png',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/badge-72.png',
         tag: 'kite-forecast',
         url: '/'
     };
