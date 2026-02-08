@@ -171,6 +171,76 @@ class StarsService:
 
         return (f"{rise_h:02d}:{rise_m:02d}", f"{set_h:02d}:{set_m:02d}")
 
+    def _get_moon_night_status(self, moonrise: Optional[str], moonset: Optional[str], sunset: Optional[str]) -> Dict:
+        """
+        Determine moon visibility status during night hours (after sunset).
+        Returns status info to help users understand when moon is visible.
+        """
+        # Parse sunset time (format: 2024-01-15T17:30)
+        sunset_hour = 17  # default
+        if sunset:
+            try:
+                sunset_hour = int(sunset.split('T')[1][:2])
+            except:
+                pass
+
+        # Convert times to hours for comparison
+        def time_to_hours(t: Optional[str]) -> Optional[float]:
+            if not t:
+                return None
+            try:
+                parts = t.split(':')
+                return int(parts[0]) + int(parts[1]) / 60
+            except:
+                return None
+
+        rise_h = time_to_hours(moonrise)
+        set_h = time_to_hours(moonset)
+
+        # Night hours: sunset to 04:00 next day
+        night_start = sunset_hour
+        night_end = 4  # 04:00
+
+        # Determine visibility status
+        if rise_h is None and set_h is None:
+            return {"status": "unknown", "status_he": "לא ידוע", "icon": "❓"}
+
+        if rise_h is not None and set_h is not None:
+            if rise_h < set_h:
+                # Normal case: moon rises then sets same day
+                if rise_h >= night_start:
+                    # Moon rises after sunset - visible from moonrise
+                    return {"status": "rises_at_night", "status_he": f"עולה ב-{moonrise}", "icon": "🌙↑"}
+                elif set_h <= night_start:
+                    # Moon sets before sunset - not visible at night
+                    return {"status": "not_visible", "status_he": "לא נראה בלילה", "icon": "🌑"}
+                elif set_h > night_start:
+                    # Moon is up at sunset, sets during night
+                    return {"status": "sets_at_night", "status_he": f"שוקע ב-{moonset}", "icon": "🌙↓"}
+            else:
+                # Moon sets before it rises (crosses midnight)
+                if set_h <= night_end and rise_h >= night_start:
+                    # Moon visible early night, sets, then rises again late night
+                    return {"status": "partial", "status_he": f"שוקע {moonset}, עולה {moonrise}", "icon": "🌗"}
+                elif rise_h >= night_start:
+                    return {"status": "rises_at_night", "status_he": f"עולה ב-{moonrise}", "icon": "🌙↑"}
+                else:
+                    return {"status": "sets_at_night", "status_he": f"שוקע ב-{moonset}", "icon": "🌙↓"}
+
+        if rise_h is not None:
+            if rise_h >= night_start or rise_h <= night_end:
+                return {"status": "rises_at_night", "status_he": f"עולה ב-{moonrise}", "icon": "🌙↑"}
+            else:
+                return {"status": "visible_all_night", "status_he": "נראה כל הלילה", "icon": "🌕"}
+
+        if set_h is not None:
+            if set_h >= night_start or set_h <= night_end:
+                return {"status": "sets_at_night", "status_he": f"שוקע ב-{moonset}", "icon": "🌙↓"}
+            else:
+                return {"status": "not_visible", "status_he": "לא נראה בלילה", "icon": "🌑"}
+
+        return {"status": "unknown", "status_he": "לא ידוע", "icon": "❓"}
+
     async def get_forecast(self, location: str, days: int = 7) -> Optional[Dict]:
         """Get stargazing forecast for a location"""
         loc = self._get_location(location)
@@ -219,6 +289,7 @@ class StarsService:
                 # Moon data
                 moon = self._calculate_moon_phase(target_date)
                 moonrise, moonset = self._calculate_moon_times(target_date, loc["lat"], loc["lon"])
+                moon_status = self._get_moon_night_status(moonrise, moonset, sunset)
 
                 # Calculate stargazing score
                 # Factors: clouds (40%), moon (40%), light pollution (20%)
@@ -244,6 +315,9 @@ class StarsService:
                     "sunrise": sunrise,
                     "moonrise": moonrise,
                     "moonset": moonset,
+                    "moon_status": moon_status["status"],
+                    "moon_status_he": moon_status["status_he"],
+                    "moon_status_icon": moon_status["icon"],
                     "moon_phase": moon["phase"],
                     "moon_illumination": moon["illumination"],
                     "cloud_cover_night": round(avg_cloud, 1),
@@ -309,6 +383,9 @@ class StarsService:
                     "moon_illumination": tonight["moon_illumination"],
                     "moonrise": tonight.get("moonrise"),
                     "moonset": tonight.get("moonset"),
+                    "moon_status": tonight.get("moon_status"),
+                    "moon_status_he": tonight.get("moon_status_he"),
+                    "moon_status_icon": tonight.get("moon_status_icon"),
                     "cloud_cover": tonight["cloud_cover_night"],
                     "is_good_night": tonight["is_good_night"]
                 })
