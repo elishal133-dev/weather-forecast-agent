@@ -259,6 +259,24 @@ body {
     font-size: 1.5rem;
 }
 
+/* Combined wind and cloud stats */
+.wind-combined .value,
+.cloud-combined .value {
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.heli-forecast .wind-combined,
+.heli-forecast .cloud-combined {
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+/* Helicopter card layout adjustments */
+.heli-time-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+}
+
 /* Moon rise/set stats */
 .moon-stat .value {
     font-size: 0.8rem !important;
