@@ -14,9 +14,12 @@ services:
       # - OpenWeatherMap: https://openweathermap.org/api (1000 calls/day free)
       # - WeatherAPI: https://www.weatherapi.com/ (1M calls/month free)
       # - Windy: https://api.windy.com/ (free tier available)
+      # - Stormglass: https://stormglass.io/ (50 calls/day free, marine data)
       - key: OPENWEATHERMAP_API_KEY
         sync: false
       - key: WEATHERAPI_KEY
         sync: false
       - key: WINDY_API_KEY
+        sync: false
+      - key: STORMGLASS_API_KEY
         sync: false

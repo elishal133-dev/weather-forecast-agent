@@ -112,6 +112,10 @@ function renderHelicopterCard(item, rank) {
     const sunrise = item.sunrise ? item.sunrise.split('T')[1]?.substring(0,5) : '';
     const sunset = item.sunset ? item.sunset.split('T')[1]?.substring(0,5) : '';
     const civilTwilight = item.civil_twilight_end ? item.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
+    const moonrise = item.moonrise || '--:--';
+    const moonset = item.moonset || '--:--';
+    const moonStatusIcon = item.moon_status_icon || '🌙';
+    const moonStatusHe = item.moon_status_he || '';
 
     return `
         <article class="card heli-card" onclick="openHeliDetail('${item.location.id}')">
@@ -132,7 +136,11 @@ function renderHelicopterCard(item, rank) {
                 <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
                 <div class="stat"><span class="value">${(item.cloud_base_ft/1000).toFixed(1)}k</span><span class="unit">ft בסיס</span></div>
                 <div class="stat sun-stat"><span class="value">🌅${sunrise}</span><span class="value">🌇${sunset}</span></div>
-                <div class="stat"><span class="value">${item.moon_illumination}%</span><span class="unit">ירח</span></div>
+                <div class="stat moon-stat"><span class="value">↑${moonrise}</span><span class="value">↓${moonset}</span></div>
+            </div>
+            <div class="card-stats heli-stats">
+                <div class="stat" style="grid-column: span 2"><span class="value">${item.moon_illumination}% ${item.moon_phase}</span></div>
+                <div class="stat moon-status-stat" style="grid-column: span 2"><span class="value">${moonStatusIcon} ${moonStatusHe}</span></div>
             </div>
             ${civilTwilight ? `<div class="card-stats heli-stats"><div class="stat twilight-stat" style="grid-column: span 4"><span class="value">🌆 דמדומים: עד ${civilTwilight}</span></div></div>` : ''}
             ${item.warnings.length ? `<div class="card-footer warning">${item.warnings.join(', ')}</div>` : ''}
