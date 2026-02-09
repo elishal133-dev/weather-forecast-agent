@@ -222,6 +222,38 @@ async def get_verification_status():
     return verifier.get_summary()
 
 
+@app.get("/api/weather/validation")
+async def get_weather_validation():
+    """Get cross-source weather validation report"""
+    try:
+        from multi_source_weather import multi_weather
+        return {
+            "status": "ok",
+            "validation_report": multi_weather.get_validation_report(),
+            "sources": [s.name for s in multi_weather.sources if getattr(s, 'enabled', True)],
+            "fetched_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting validation report: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/weather/compare/{lat}/{lon}")
+async def compare_weather_sources(lat: float, lon: float):
+    """Compare weather data from all sources for a specific location"""
+    try:
+        from multi_source_weather import multi_weather
+        result = await multi_weather.fetch_current(lat, lon)
+        return {
+            "location": {"lat": lat, "lon": lon},
+            "combined": result,
+            "fetched_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error comparing sources: {e}")
+        raise HTTPException(500, str(e))
+
+
 # ============ KITE ENDPOINTS ============
 @app.get("/api/kite/spots")
 async def get_kite_spots(region: Optional[str] = None):

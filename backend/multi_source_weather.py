@@ -1,20 +1,275 @@
 """
-Multi-Source Weather Aggregator
+Multi-Source Weather Aggregator with Data Validation
 Combines data from multiple weather APIs for better accuracy:
 - Open-Meteo (free, no API key)
 - OpenWeatherMap (free tier, needs API key)
 - WeatherAPI (free tier, needs API key)
+- Windy (free tier, needs API key)
+
+Includes cross-source validation and anomaly detection.
 """
 
 import asyncio
 import logging
 import os
-from dataclasses import dataclass
+import math
+import statistics
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 import httpx
 
 logger = logging.getLogger('multi_weather')
+
+
+# =============================================================================
+# Data Validation Configuration
+# =============================================================================
+
+@dataclass
+class ValidationConfig:
+    """Configuration for data validation thresholds"""
+    # Maximum acceptable deviation from median (as multiplier of std dev)
+    outlier_threshold: float = 2.0
+
+    # Minimum sources needed for high confidence
+    min_sources_high_confidence: int = 3
+
+    # Field-specific reasonable ranges
+    field_ranges: Dict[str, Tuple[float, float]] = field(default_factory=lambda: {
+        "wind_speed_knots": (0, 100),
+        "wind_gusts_knots": (0, 120),
+        "temperature_c": (-30, 55),
+        "humidity_percent": (0, 100),
+        "cloud_cover_percent": (0, 100),
+        "visibility_km": (0, 100),
+        "precipitation_mm": (0, 100),
+        "wind_direction_deg": (0, 360)
+    })
+
+    # Maximum acceptable difference between sources for each field
+    max_source_diff: Dict[str, float] = field(default_factory=lambda: {
+        "wind_speed_knots": 10,      # 10 knots difference acceptable
+        "wind_gusts_knots": 15,      # 15 knots for gusts
+        "temperature_c": 3,          # 3°C difference
+        "humidity_percent": 20,      # 20% humidity difference
+        "cloud_cover_percent": 30,   # 30% cloud cover difference
+        "visibility_km": 5,          # 5km visibility difference
+        "precipitation_mm": 2,       # 2mm precipitation
+        "wind_direction_deg": 45     # 45° direction difference
+    })
+
+
+@dataclass
+class ValidationResult:
+    """Result of data validation"""
+    is_valid: bool
+    confidence: float  # 0-1
+    anomalies: List[str]
+    corrections: Dict[str, Any]
+    source_agreement: Dict[str, float]  # Field -> agreement score
+
+
+class DataValidator:
+    """
+    Cross-source data validation and anomaly detection.
+    Compares data from multiple sources to ensure accuracy.
+    """
+
+    def __init__(self, config: ValidationConfig = None):
+        self.config = config or ValidationConfig()
+        self.anomaly_log: List[Dict] = []
+
+    def validate_current(self, results: List['WeatherData']) -> ValidationResult:
+        """Validate current weather data from multiple sources"""
+        if len(results) < 2:
+            return ValidationResult(
+                is_valid=True,
+                confidence=0.5 if results else 0,
+                anomalies=[],
+                corrections={},
+                source_agreement={}
+            )
+
+        anomalies = []
+        corrections = {}
+        agreement_scores = {}
+
+        # Validate each field
+        fields = ["wind_speed_knots", "wind_gusts_knots", "temperature_c",
+                  "humidity_percent", "cloud_cover_percent", "visibility_km",
+                  "precipitation_mm"]
+
+        for field_name in fields:
+            values = [(getattr(r, field_name) or 0, r.source) for r in results
+                     if getattr(r, field_name, None) is not None]
+
+            if len(values) < 2:
+                continue
+
+            nums = [v[0] for v in values]
+            sources = [v[1] for v in values]
+
+            # Check range validity
+            min_val, max_val = self.config.field_ranges.get(field_name, (-float('inf'), float('inf')))
+            out_of_range = [(n, s) for n, s in values if n < min_val or n > max_val]
+            if out_of_range:
+                for val, src in out_of_range:
+                    anomalies.append(f"{field_name}: {src} reported {val} (out of range {min_val}-{max_val})")
+
+            # Check source agreement
+            max_diff = self.config.max_source_diff.get(field_name, float('inf'))
+            spread = max(nums) - min(nums)
+
+            if spread > max_diff:
+                # Sources disagree significantly
+                median = statistics.median(nums)
+                anomalies.append(f"{field_name}: sources disagree (spread={spread:.1f}, max allowed={max_diff})")
+
+                # Find outlier sources
+                for val, src in values:
+                    if abs(val - median) > max_diff:
+                        anomalies.append(f"  -> {src} outlier: {val:.1f} (median={median:.1f})")
+
+                # Suggest correction to median
+                corrections[field_name] = median
+
+            # Calculate agreement score (0-1)
+            if spread <= max_diff:
+                agreement_scores[field_name] = 1.0
+            else:
+                agreement_scores[field_name] = max(0, 1 - (spread / (max_diff * 3)))
+
+        # Wind direction needs special circular handling
+        self._validate_wind_direction(results, anomalies, corrections, agreement_scores)
+
+        # Calculate overall confidence
+        if not agreement_scores:
+            confidence = 0.5
+        else:
+            confidence = sum(agreement_scores.values()) / len(agreement_scores)
+
+            # Boost confidence if more sources agree
+            if len(results) >= self.config.min_sources_high_confidence:
+                confidence = min(1.0, confidence * 1.1)
+
+        # Log anomalies
+        if anomalies:
+            self._log_anomaly({
+                "timestamp": datetime.now().isoformat(),
+                "type": "current_weather",
+                "anomalies": anomalies,
+                "sources": [r.source for r in results]
+            })
+
+        return ValidationResult(
+            is_valid=len(anomalies) == 0,
+            confidence=round(confidence, 2),
+            anomalies=anomalies,
+            corrections=corrections,
+            source_agreement=agreement_scores
+        )
+
+    def validate_hourly(self, all_data: List[Dict]) -> Tuple[List[Dict], List[str]]:
+        """Validate hourly forecast data and return corrected data with anomaly list"""
+        from collections import defaultdict
+
+        anomalies = []
+
+        # Group by time
+        time_groups = defaultdict(list)
+        for item in all_data:
+            time_str = item.get("time", "")[:13]  # Group by hour
+            time_groups[time_str].append(item)
+
+        corrected_data = []
+
+        for time_key, group in time_groups.items():
+            if len(group) < 2:
+                corrected_data.extend(group)
+                continue
+
+            # Check each field for outliers
+            fields = ["wind_speed_knots", "wind_gusts_knots", "temperature_c",
+                      "humidity_percent", "cloud_cover_percent"]
+
+            for field_name in fields:
+                values = [(item.get(field_name, 0), item.get("source", "unknown"))
+                         for item in group if item.get(field_name) is not None]
+
+                if len(values) < 2:
+                    continue
+
+                nums = [v[0] for v in values]
+                median = statistics.median(nums)
+
+                # Check for outliers
+                max_diff = self.config.max_source_diff.get(field_name, float('inf'))
+                for val, src in values:
+                    if abs(val - median) > max_diff * 1.5:
+                        anomalies.append(f"{time_key} {field_name}: {src}={val:.1f} (median={median:.1f})")
+
+            corrected_data.extend(group)
+
+        if anomalies:
+            self._log_anomaly({
+                "timestamp": datetime.now().isoformat(),
+                "type": "hourly_forecast",
+                "anomaly_count": len(anomalies),
+                "sample_anomalies": anomalies[:10]  # First 10 for log
+            })
+
+        return corrected_data, anomalies
+
+    def _validate_wind_direction(self, results: List['WeatherData'],
+                                  anomalies: List[str], corrections: Dict,
+                                  agreement_scores: Dict):
+        """Validate wind direction with circular math"""
+        directions = [(r.wind_direction_deg, r.source) for r in results]
+
+        if len(directions) < 2:
+            return
+
+        # Calculate circular mean
+        x_sum = sum(math.cos(math.radians(d)) for d, _ in directions)
+        y_sum = sum(math.sin(math.radians(d)) for d, _ in directions)
+        mean_dir = math.degrees(math.atan2(y_sum, x_sum)) % 360
+
+        # Check angular differences
+        max_diff = self.config.max_source_diff.get("wind_direction_deg", 45)
+        outliers = []
+
+        for deg, src in directions:
+            # Calculate angular difference
+            diff = abs(((deg - mean_dir + 180) % 360) - 180)
+            if diff > max_diff:
+                outliers.append((deg, src, diff))
+
+        if outliers:
+            anomalies.append(f"wind_direction: sources disagree")
+            for deg, src, diff in outliers:
+                anomalies.append(f"  -> {src}: {deg}° (diff from mean: {diff:.0f}°)")
+            corrections["wind_direction_deg"] = int(mean_dir)
+            agreement_scores["wind_direction_deg"] = 0.5
+        else:
+            agreement_scores["wind_direction_deg"] = 1.0
+
+    def _log_anomaly(self, anomaly: Dict):
+        """Log anomaly for monitoring"""
+        self.anomaly_log.append(anomaly)
+        # Keep only last 100 anomalies
+        if len(self.anomaly_log) > 100:
+            self.anomaly_log = self.anomaly_log[-100:]
+
+        logger.warning(f"Weather data anomaly detected: {anomaly.get('type')} - {len(anomaly.get('anomalies', []))} issues")
+
+    def get_anomaly_report(self) -> Dict:
+        """Get recent anomaly report"""
+        return {
+            "total_anomalies": len(self.anomaly_log),
+            "recent": self.anomaly_log[-10:] if self.anomaly_log else [],
+            "generated_at": datetime.now().isoformat()
+        }
 
 
 @dataclass
@@ -450,6 +705,7 @@ class MultiSourceWeather:
     """
     Aggregates weather data from multiple sources for better accuracy.
     Uses weighted averaging based on source reliability.
+    Includes cross-source validation and anomaly detection.
     """
 
     # Source weights (higher = more trusted)
@@ -468,6 +724,7 @@ class MultiSourceWeather:
             WeatherAPISource(self.client),
             WindySource(self.client)
         ]
+        self.validator = DataValidator()
 
         enabled = [s.name for s in self.sources if getattr(s, 'enabled', True)]
         logger.info(f"MultiSourceWeather initialized with sources: {enabled}")
@@ -476,7 +733,7 @@ class MultiSourceWeather:
         await self.client.aclose()
 
     async def fetch_current(self, lat: float, lon: float) -> Dict[str, Any]:
-        """Fetch and combine current weather from all sources"""
+        """Fetch, validate, and combine current weather from all sources"""
         tasks = [source.fetch_current(lat, lon) for source in self.sources]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -486,14 +743,41 @@ class MultiSourceWeather:
             logger.error(f"All weather sources failed for {lat}, {lon}")
             return {}
 
+        # Validate data across sources
+        validation = self.validator.validate_current(valid_results)
+
         combined = self._combine_current(valid_results)
+
+        # Apply corrections if needed
+        if validation.corrections:
+            for field, value in validation.corrections.items():
+                if field in combined:
+                    logger.info(f"Applying correction: {field} = {value} (was {combined[field]})")
+                    combined[field] = value
+
+        # Add validation metadata
         combined["sources_used"] = [r.source for r in valid_results]
         combined["source_count"] = len(valid_results)
+        combined["validation"] = {
+            "is_valid": validation.is_valid,
+            "confidence": validation.confidence,
+            "anomaly_count": len(validation.anomalies),
+            "source_agreement": validation.source_agreement
+        }
+
+        # Include per-source raw data for transparency
+        combined["source_data"] = {
+            r.source: {
+                "wind_speed_knots": r.wind_speed_knots,
+                "wind_direction_deg": r.wind_direction_deg,
+                "temperature_c": r.temperature_c
+            } for r in valid_results
+        }
 
         return combined
 
     async def fetch_hourly(self, lat: float, lon: float, hours: int = 24) -> List[Dict]:
-        """Fetch and combine hourly forecast from all sources"""
+        """Fetch, validate, and combine hourly forecast from all sources"""
         tasks = [source.fetch_hourly(lat, lon, hours) for source in self.sources]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -507,8 +791,18 @@ class MultiSourceWeather:
             logger.warning(f"No hourly data from any source for {lat}, {lon}")
             return []
 
+        # Validate hourly data
+        validated_data, anomalies = self.validator.validate_hourly(all_hourly)
+
+        if anomalies:
+            logger.warning(f"Hourly validation found {len(anomalies)} anomalies")
+
         # Group by time and combine
-        return self._combine_hourly(all_hourly, hours)
+        return self._combine_hourly(validated_data, hours)
+
+    def get_validation_report(self) -> Dict:
+        """Get validation/anomaly report"""
+        return self.validator.get_anomaly_report()
 
     def _combine_current(self, results: List[WeatherData]) -> Dict[str, Any]:
         """Combine current weather data using weighted averaging"""
