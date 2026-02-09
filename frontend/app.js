@@ -3,6 +3,23 @@
  * Modes: Helicopter, Kite, Stars
  */
 
+// ============ Security ============
+// Escape HTML to prevent XSS
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+}
+
+// Escape for use in HTML attributes (like onclick)
+function escapeAttr(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
 // ============ State ============
 let currentMode = 'kite';
 let currentRegion = 'all';
@@ -81,19 +98,20 @@ function renderKiteCard(item, rank) {
     const rating = item.overall_rating || 'fair';
     const wave = item.wave_height_m !== null ? `${item.wave_height_m.toFixed(1)}m` : 'שטוח';
     const waveDanger = item.wave_danger ? 'danger' : '';
+    const spotId = escapeAttr(item.spot_id);
 
     return `
-        <article class="card kite-card" onclick="openKiteDetail('${item.spot_id}')">
+        <article class="card kite-card" onclick="openKiteDetail('${spotId}')">
             <div class="card-header">
                 <div class="card-info">
                     <span class="rank">#${rank}</span>
-                    <h3>${item.spot_name_he}</h3>
-                    <span class="subtitle">${item.spot_name}</span>
-                    <span class="region">${translations.regions[item.region] || item.region}</span>
+                    <h3>${escapeHtml(item.spot_name_he)}</h3>
+                    <span class="subtitle">${escapeHtml(item.spot_name)}</span>
+                    <span class="region">${escapeHtml(translations.regions[item.region] || item.region)}</span>
                 </div>
-                <div class="score-badge ${rating}">
+                <div class="score-badge ${escapeAttr(rating)}">
                     <span class="score">${Math.round(item.overall_score)}</span>
-                    <span class="label">${translations.ratings[rating] || rating}</span>
+                    <span class="label">${escapeHtml(translations.ratings[rating] || rating)}</span>
                 </div>
             </div>
             <div class="card-stats kite-stats">
@@ -102,7 +120,7 @@ function renderKiteCard(item, rank) {
                 <div class="stat"><span class="value">${item.wind_direction_deg || item.wind_direction}°</span><span class="unit">כיוון</span></div>
                 <div class="stat ${waveDanger}"><span class="value">${wave}</span><span class="unit">גלים</span></div>
             </div>
-            <div class="card-footer">${item.recommendation}</div>
+            <div class="card-footer">${escapeHtml(item.recommendation)}</div>
         </article>
     `;
 }
@@ -114,8 +132,8 @@ function renderHelicopterCard(item, rank) {
     const civilTwilight = item.civil_twilight_end ? item.civil_twilight_end.split('T')[1]?.substring(0,5) : '';
     const moonrise = item.moonrise || '--:--';
     const moonset = item.moonset || '--:--';
-    const moonStatusIcon = item.moon_status_icon || '🌙';
     const moonStatusHe = item.moon_status_he || '';
+    const locationId = escapeAttr(item.location.id);
 
     // Wind direction to Hebrew compass
     const windDir = item.wind_direction_deg;
@@ -128,18 +146,18 @@ function renderHelicopterCard(item, rank) {
                     windDir < 292.5 ? 'מערב' : 'צפון-מערב';
 
     return `
-        <article class="card heli-card" onclick="openHeliDetail('${item.location.id}')">
+        <article class="card heli-card" onclick="openHeliDetail('${locationId}')">
             <div class="card-header">
                 <div class="card-info">
-                    <h3>${item.location.name_he}</h3>
-                    <span class="subtitle">${item.location.name}</span>
+                    <h3>${escapeHtml(item.location.name_he)}</h3>
+                    <span class="subtitle">${escapeHtml(item.location.name)}</span>
                     <span class="flyable-status ${flyable ? 'good' : 'poor'}">${flyable ? '✓ טיסה' : '✗ לא טיסה'}</span>
                 </div>
             </div>
             <div class="card-stats heli-stats heli-main-stats">
                 <div class="stat cloud-stat">
                     <span class="icon">☁️</span>
-                    <span class="value">${item.cloud_oktas}</span>
+                    <span class="value">${escapeHtml(item.cloud_oktas)}</span>
                     <span class="detail">${(item.cloud_base_ft/1000).toFixed(1)}k ft</span>
                 </div>
                 <div class="stat wind-stat">
@@ -159,16 +177,16 @@ function renderHelicopterCard(item, rank) {
             <div class="card-stats heli-stats heli-time-stats">
                 <div class="stat sun-stat">
                     <span class="label">שמש</span>
-                    <span class="times">🌅 ${sunrise} → 🌇 ${sunset}</span>
-                    ${civilTwilight ? `<span class="twilight">דמדומים עד ${civilTwilight}</span>` : ''}
+                    <span class="times">🌅 ${escapeHtml(sunrise)} → 🌇 ${escapeHtml(sunset)}</span>
+                    ${civilTwilight ? `<span class="twilight">דמדומים עד ${escapeHtml(civilTwilight)}</span>` : ''}
                 </div>
                 <div class="stat moon-stat">
                     <span class="label">ירח ${item.moon_illumination}%</span>
-                    <span class="times">↑ ${moonrise} ↓ ${moonset}</span>
-                    <span class="status">${moonStatusHe}</span>
+                    <span class="times">↑ ${escapeHtml(moonrise)} ↓ ${escapeHtml(moonset)}</span>
+                    <span class="status">${escapeHtml(moonStatusHe)}</span>
                 </div>
             </div>
-            ${item.warnings.length ? `<div class="card-footer warning">${item.warnings.join(', ')}</div>` : ''}
+            ${item.warnings.length ? `<div class="card-footer warning">${escapeHtml(item.warnings.join(', '))}</div>` : ''}
         </article>
     `;
 }
@@ -180,29 +198,30 @@ function renderStarsCard(item, rank) {
     const moonset = item.moonset || '--:--';
     const moonStatusIcon = item.moon_status_icon || '🌙';
     const moonStatusHe = item.moon_status_he || '';
+    const locationId = escapeAttr(item.location.id);
 
     return `
-        <article class="card stars-card" onclick="openStarsDetail('${item.location.id}')">
+        <article class="card stars-card" onclick="openStarsDetail('${locationId}')">
             <div class="card-header">
                 <div class="card-info">
                     <span class="rank">#${rank}</span>
-                    <h3>${item.location.name_he}</h3>
-                    <span class="subtitle">${item.location.name}</span>
+                    <h3>${escapeHtml(item.location.name_he)}</h3>
+                    <span class="subtitle">${escapeHtml(item.location.name)}</span>
                 </div>
                 <div class="score-badge ${scoreClass}">
                     <span class="score">${Math.round(item.score)}</span>
-                    <span class="label">${translations.ratings[rating] || rating}</span>
+                    <span class="label">${escapeHtml(translations.ratings[rating] || rating)}</span>
                 </div>
             </div>
             <div class="card-stats stars-stats">
                 <div class="stat"><span class="value">${item.moon_illumination.toFixed(0)}%</span><span class="unit">ירח</span></div>
                 <div class="stat"><span class="value">${item.cloud_cover.toFixed(0)}%</span><span class="unit">עננות</span></div>
-                <div class="stat moon-stat"><span class="value">↑${moonrise}</span><span class="unit">זריחה</span></div>
-                <div class="stat moon-stat"><span class="value">↓${moonset}</span><span class="unit">שקיעה</span></div>
+                <div class="stat moon-stat"><span class="value">↑${escapeHtml(moonrise)}</span><span class="unit">זריחה</span></div>
+                <div class="stat moon-stat"><span class="value">↓${escapeHtml(moonset)}</span><span class="unit">שקיעה</span></div>
             </div>
             <div class="card-footer">
-                <span class="moon-phase">${item.moon_phase}</span>
-                <span class="moon-status">${moonStatusIcon} ${moonStatusHe}</span>
+                <span class="moon-phase">${escapeHtml(item.moon_phase)}</span>
+                <span class="moon-status">${escapeHtml(moonStatusIcon)} ${escapeHtml(moonStatusHe)}</span>
             </div>
         </article>
     `;
