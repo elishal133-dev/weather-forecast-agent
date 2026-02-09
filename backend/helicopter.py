@@ -41,13 +41,20 @@ def calculate_civil_twilight_end(sunset_str: str, latitude: float) -> str:
 
 # Helicopter-friendly locations in Israel
 HELICOPTER_LOCATIONS = [
-    {"id": "tel_aviv", "name": "Tel Aviv", "name_he": "תל אביב", "lat": 32.0853, "lon": 34.7818},
+    {"id": "palmachim", "name": "Palmachim", "name_he": "פלמחים", "lat": 31.9275, "lon": 34.7008},
     {"id": "jerusalem", "name": "Jerusalem", "name_he": "ירושלים", "lat": 31.7683, "lon": 35.2137},
-    {"id": "haifa", "name": "Haifa", "name_he": "חיפה", "lat": 32.7940, "lon": 34.9896},
-    {"id": "eilat", "name": "Eilat", "name_he": "אילת", "lat": 29.5577, "lon": 34.9519},
     {"id": "beer_sheva", "name": "Beer Sheva", "name_he": "באר שבע", "lat": 31.2518, "lon": 34.7913},
-    {"id": "tiberias", "name": "Tiberias", "name_he": "טבריה", "lat": 32.7922, "lon": 35.5312},
-    {"id": "netanya", "name": "Netanya", "name_he": "נתניה", "lat": 32.3215, "lon": 34.8532},
+    {"id": "dead_sea", "name": "Dead Sea", "name_he": "ים המלח", "lat": 31.5000, "lon": 35.4732},
+    {"id": "arad", "name": "Arad", "name_he": "ערד", "lat": 31.2589, "lon": 35.2126},
+    {"id": "mitzpe_ramon", "name": "Mitzpe Ramon", "name_he": "מצפה רמון", "lat": 30.6100, "lon": 34.8015},
+    {"id": "nahal_david", "name": "Nahal David", "name_he": "נחל דוד", "lat": 31.4667, "lon": 35.3833},
+    {"id": "mount_meron", "name": "Mount Meron", "name_he": "הר מירון", "lat": 32.9986, "lon": 35.4100},
+    {"id": "golan_heights", "name": "Golan Heights", "name_he": "רמת הגולן", "lat": 33.0500, "lon": 35.7500},
+    {"id": "haifa", "name": "Haifa", "name_he": "חיפה", "lat": 32.7940, "lon": 34.9896},
+    {"id": "beit_shean", "name": "Beit She'an", "name_he": "בית שאן", "lat": 32.4972, "lon": 35.4963},
+    {"id": "arava", "name": "Arava", "name_he": "ערבה", "lat": 30.0500, "lon": 35.0500},
+    {"id": "tsomet_haruchot", "name": "Tsomet HaRuchot", "name_he": "צומת הרוחות", "lat": 30.9500, "lon": 34.7833},
+    {"id": "eilat", "name": "Eilat", "name_he": "אילת", "lat": 29.5577, "lon": 34.9519},
 ]
 
 def cloud_oktas(cover_pct: float) -> int:
