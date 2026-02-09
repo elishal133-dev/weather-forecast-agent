@@ -117,6 +117,16 @@ function renderHelicopterCard(item, rank) {
     const moonStatusIcon = item.moon_status_icon || '🌙';
     const moonStatusHe = item.moon_status_he || '';
 
+    // Wind direction to Hebrew compass
+    const windDir = item.wind_direction_deg;
+    const compass = windDir >= 337.5 || windDir < 22.5 ? 'צפון' :
+                    windDir < 67.5 ? 'צפון-מזרח' :
+                    windDir < 112.5 ? 'מזרח' :
+                    windDir < 157.5 ? 'דרום-מזרח' :
+                    windDir < 202.5 ? 'דרום' :
+                    windDir < 247.5 ? 'דרום-מערב' :
+                    windDir < 292.5 ? 'מערב' : 'צפון-מערב';
+
     return `
         <article class="card heli-card" onclick="openHeliDetail('${item.location.id}')">
             <div class="card-header">
@@ -127,20 +137,37 @@ function renderHelicopterCard(item, rank) {
                 </div>
             </div>
             <div class="card-stats heli-stats heli-main-stats">
-                <div class="stat wind-combined"><span class="value">${item.wind_speed_knots.toFixed(0)}kts ${item.wind_direction_deg}°</span><span class="unit">רוח</span></div>
-                <div class="stat"><span class="value">${item.temperature_c.toFixed(0)}°</span><span class="unit">טמפ׳</span></div>
-                <div class="stat cloud-combined"><span class="value">${item.cloud_oktas} @ ${(item.cloud_base_ft/1000).toFixed(1)}k ft</span><span class="unit">עננות</span></div>
-                <div class="stat"><span class="value">${item.visibility_km.toFixed(0)}</span><span class="unit">ק"מ ראות</span></div>
+                <div class="stat cloud-stat">
+                    <span class="icon">☁️</span>
+                    <span class="value">${item.cloud_oktas}</span>
+                    <span class="detail">${(item.cloud_base_ft/1000).toFixed(1)}k ft</span>
+                </div>
+                <div class="stat wind-stat">
+                    <span class="icon">💨</span>
+                    <span class="value">${item.wind_speed_knots.toFixed(0)} kts</span>
+                    <span class="detail">${compass}</span>
+                </div>
+                <div class="stat temp-stat">
+                    <span class="icon">🌡️</span>
+                    <span class="value">${item.temperature_c.toFixed(0)}°C</span>
+                </div>
+                <div class="stat vis-stat">
+                    <span class="icon">👁️</span>
+                    <span class="value">${item.visibility_km.toFixed(0)} ק"מ</span>
+                </div>
             </div>
             <div class="card-stats heli-stats heli-time-stats">
-                <div class="stat sun-stat"><span class="value">🌅${sunrise}</span><span class="value">🌇${sunset}</span></div>
-                <div class="stat moon-stat"><span class="value">↑${moonrise}</span><span class="value">↓${moonset}</span></div>
+                <div class="stat sun-stat">
+                    <span class="label">שמש</span>
+                    <span class="times">🌅 ${sunrise} → 🌇 ${sunset}</span>
+                    ${civilTwilight ? `<span class="twilight">דמדומים עד ${civilTwilight}</span>` : ''}
+                </div>
+                <div class="stat moon-stat">
+                    <span class="label">ירח ${item.moon_illumination}%</span>
+                    <span class="times">↑ ${moonrise} ↓ ${moonset}</span>
+                    <span class="status">${moonStatusHe}</span>
+                </div>
             </div>
-            <div class="card-stats heli-stats">
-                <div class="stat" style="grid-column: span 2"><span class="value">${item.moon_illumination}% ${item.moon_phase}</span></div>
-                <div class="stat moon-status-stat" style="grid-column: span 2"><span class="value">${moonStatusIcon} ${moonStatusHe}</span></div>
-            </div>
-            ${civilTwilight ? `<div class="card-stats heli-stats"><div class="stat twilight-stat" style="grid-column: span 4"><span class="value">🌆 דמדומים: עד ${civilTwilight}</span></div></div>` : ''}
             ${item.warnings.length ? `<div class="card-footer warning">${item.warnings.join(', ')}</div>` : ''}
         </article>
     `;
@@ -298,20 +325,21 @@ async function openHeliDetail(locationId) {
             const moonStatusIcon = d.moon_status_icon || '🌙';
             const moonStatusHe = d.moon_status_he || '';
             return `<div class="daily-card heli-daily">
-                <div class="daily-cloud">${d.cloud_oktas} @ ${(d.cloud_base_avg_ft/1000).toFixed(1)}k ft</div>
                 <div class="daily-date">${dayName}</div>
-                <div class="daily-temp">${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
-                <div class="daily-wind">💨 ${d.wind_max_knots?.toFixed(0)}kts ${d.wind_direction_dominant || ''}°</div>
-                <div class="daily-sun-row"><span>🌅 ${sunrise}</span></div>
-                <div class="daily-sun-row"><span>🌇 ${sunset}</span></div>
-                ${civilTwilight ? `<div class="daily-sun-row"><span>🌆 ${civilTwilight}</span></div>` : ''}
-                <div class="daily-moon-times">
-                    <span class="moon-rise">🌙↑${moonrise}</span>
-                    <span class="moon-set">🌙↓${moonset}</span>
-                </div>
-                <div class="daily-moon-status">${moonStatusIcon} ${moonStatusHe}</div>
-                <div class="daily-moon">${d.moon_phase} ${d.moon_illumination}%</div>
                 <div class="daily-flyable">${d.flyable_hours}/${d.total_hours} שעות טיסה</div>
+                <div class="daily-weather">
+                    <div class="daily-row">☁️ ${d.cloud_oktas} @ ${(d.cloud_base_avg_ft/1000).toFixed(1)}k ft</div>
+                    <div class="daily-row">💨 ${d.wind_max_knots?.toFixed(0)} kts</div>
+                    <div class="daily-row">🌡️ ${d.temp_min?.toFixed(0)}°-${d.temp_max?.toFixed(0)}°</div>
+                </div>
+                <div class="daily-times">
+                    <div class="sun-times">🌅 ${sunrise} → 🌇 ${sunset}</div>
+                    ${civilTwilight ? `<div class="twilight">דמדומים ${civilTwilight}</div>` : ''}
+                </div>
+                <div class="daily-moon">
+                    <div class="moon-times">🌙 ↑${moonrise} ↓${moonset}</div>
+                    <div class="moon-info">${d.moon_illumination}% ${moonStatusHe}</div>
+                </div>
             </div>`;
         }).join('');
 
@@ -321,10 +349,10 @@ async function openHeliDetail(locationId) {
             const time = new Date(h.time).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'});
             return `<div class="forecast-hour heli-forecast ${h.is_flyable ? 'good' : 'poor'}">
                 <div class="time">${time}</div>
-                <div class="wind-combined">${Math.round(h.wind_speed_knots)}kts ${h.wind_direction_deg}°</div>
-                <div class="cloud-combined">${h.cloud_oktas} @ ${(h.cloud_base_ft/1000).toFixed(1)}k</div>
-                <div class="temp">${h.temperature_c.toFixed(0)}°</div>
-                <div class="vis">${h.visibility_km.toFixed(0)}km</div>
+                <div class="cloud">☁️ ${h.cloud_oktas}</div>
+                <div class="wind">💨 ${Math.round(h.wind_speed_knots)}kts</div>
+                <div class="temp">🌡️ ${h.temperature_c.toFixed(0)}°</div>
+                <div class="vis">👁️ ${h.visibility_km.toFixed(0)}km</div>
             </div>`;
         }).join('');
 

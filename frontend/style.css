@@ -255,45 +255,74 @@ body {
     grid-template-columns: repeat(4, 1fr);
 }
 
-.heli-card .cloud-stat .value {
-    font-size: 1.5rem;
+/* Flight card - main stats with icons */
+.heli-main-stats .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px;
 }
 
-/* Combined wind and cloud stats */
-.wind-combined .value,
-.cloud-combined .value {
-    font-size: 0.95rem;
-    white-space: nowrap;
+.heli-main-stats .stat .icon {
+    font-size: 1.2rem;
 }
 
-.heli-forecast .wind-combined,
-.heli-forecast .cloud-combined {
-    font-size: 0.75rem;
-    white-space: nowrap;
+.heli-main-stats .stat .value {
+    font-size: 1rem;
+    font-weight: 600;
 }
 
-/* Helicopter card layout adjustments */
+.heli-main-stats .stat .detail {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+/* Flight card - time stats (sun/moon) */
 .heli-time-stats {
     grid-template-columns: repeat(2, 1fr) !important;
 }
 
-/* Moon rise/set stats */
-.moon-stat .value {
-    font-size: 0.8rem !important;
-}
-.moon-stat {
-    background: rgba(255, 215, 0, 0.1);
+.heli-time-stats .stat {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 3px;
+    padding: 8px;
 }
 
-/* Moon status stat */
-.moon-status-stat {
+.heli-time-stats .stat .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.heli-time-stats .stat .times {
+    font-size: 0.85rem;
+}
+
+.heli-time-stats .stat .twilight {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.heli-time-stats .stat .status {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.heli-time-stats .sun-stat {
+    background: rgba(255, 165, 0, 0.1);
+}
+
+.heli-time-stats .moon-stat {
     background: rgba(255, 215, 0, 0.1);
 }
-.moon-status-stat .value {
-    font-size: 0.75rem !important;
+
+/* Hourly forecast combined displays */
+.heli-forecast .wind-combined,
+.heli-forecast .cloud-combined {
+    font-size: 0.75rem;
     white-space: nowrap;
 }
 
@@ -386,9 +415,12 @@ body {
     min-width: 50px;
 }
 
-.forecast-hour .time { font-size: 0.75rem; color: var(--text-secondary); }
-.forecast-hour .wind { font-size: 1.125rem; font-weight: 600; }
+.forecast-hour .time { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; }
+.forecast-hour .wind { font-size: 0.85rem; font-weight: 600; }
 .forecast-hour .dir { font-size: 0.75rem; }
+.forecast-hour .cloud { font-size: 0.85rem; }
+.forecast-hour .temp { font-size: 0.75rem; }
+.forecast-hour .vis { font-size: 0.7rem; color: var(--text-secondary); }
 .forecast-hour .wave { font-size: 0.75rem; color: var(--text-secondary); }
 .forecast-hour .wave.danger { color: var(--poor); font-weight: 600; }
 
@@ -417,14 +449,52 @@ body {
     gap: var(--spacing-xs);
 }
 
-.daily-date { font-weight: 600; font-size: 0.875rem; }
-.daily-cloud { font-size: 1.25rem; font-weight: 700; color: var(--text); }
-.daily-temp { font-size: 1rem; font-weight: 600; }
-.daily-wind, .daily-cloud-base, .daily-sun, .daily-moon, .daily-flyable {
+.daily-date { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+.daily-flyable { font-weight: 600; color: var(--good); font-size: 0.8rem; margin-bottom: 8px; }
+
+.daily-weather {
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 6px;
+}
+
+.daily-row {
+    font-size: 0.8rem;
+    padding: 2px 0;
+    text-align: right;
+}
+
+.daily-times {
+    background: rgba(255, 165, 0, 0.1);
+    border-radius: 6px;
+    padding: 6px;
+    margin-bottom: 6px;
+}
+
+.daily-times .sun-times {
     font-size: 0.75rem;
+}
+
+.daily-times .twilight {
+    font-size: 0.65rem;
     color: var(--text-secondary);
 }
-.daily-flyable { font-weight: 600; color: var(--good); }
+
+.daily-moon {
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.daily-moon .moon-times {
+    font-size: 0.75rem;
+}
+
+.daily-moon .moon-info {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
 
 /* Moon times in helicopter daily cards */
 .daily-moon-times {
@@ -471,29 +541,25 @@ body {
     color: #ffb74d;
 }
 
-.forecast-hour .cloud { font-size: 0.875rem; }
-.forecast-hour .temp { font-size: 0.75rem; color: var(--text-secondary); }
-
 /* Helicopter forecast styling */
 .heli-hours {
     gap: var(--spacing-md);
 }
 
 .forecast-hour.heli-forecast {
-    min-width: 70px;
-    padding: var(--spacing-md) var(--spacing-sm);
+    min-width: 65px;
+    padding: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.forecast-hour .cloud-oktas {
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.2;
-    margin: var(--spacing-xs) 0;
-}
-
-.forecast-hour .vis {
+.forecast-hour.heli-forecast .cloud,
+.forecast-hour.heli-forecast .wind,
+.forecast-hour.heli-forecast .temp,
+.forecast-hour.heli-forecast .vis {
     font-size: 0.7rem;
-    color: var(--text-secondary);
+    white-space: nowrap;
 }
 
 /* Forecast Days */
