@@ -701,6 +701,208 @@ class WindySource:
             return []
 
 
+class StormglassSource:
+    """Stormglass API - High quality marine weather data"""
+
+    BASE_URL = "https://api.stormglass.io/v2"
+
+    def __init__(self, client: httpx.AsyncClient, api_key: Optional[str] = None):
+        self.client = client
+        self.api_key = api_key or os.environ.get("STORMGLASS_API_KEY")
+        self.name = "stormglass"
+        self.enabled = bool(self.api_key)
+
+        if not self.enabled:
+            logger.info("Stormglass: No API key found, source disabled")
+
+    def _ms_to_knots(self, ms: float) -> float:
+        return ms * 1.94384
+
+    async def fetch_current(self, lat: float, lon: float) -> Optional[WeatherData]:
+        """Fetch current marine weather from Stormglass"""
+        if not self.enabled:
+            return None
+
+        try:
+            params = {
+                "lat": lat,
+                "lng": lon,
+                "params": "windSpeed,windDirection,gust,airTemperature,humidity,cloudCover,visibility,precipitation"
+            }
+            headers = {"Authorization": self.api_key}
+
+            resp = await self.client.get(f"{self.BASE_URL}/weather/point", params=params, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+
+            hours = data.get("hours", [])
+            if not hours:
+                return None
+
+            current = hours[0]
+
+            # Stormglass returns data from multiple sources, get average
+            def get_avg(field):
+                vals = current.get(field, {})
+                if isinstance(vals, dict):
+                    numbers = [v for v in vals.values() if isinstance(v, (int, float))]
+                    return sum(numbers) / len(numbers) if numbers else 0
+                return vals or 0
+
+            return WeatherData(
+                source=self.name,
+                timestamp=datetime.now(),
+                wind_speed_knots=self._ms_to_knots(get_avg("windSpeed")),
+                wind_gusts_knots=self._ms_to_knots(get_avg("gust")),
+                wind_direction_deg=int(get_avg("windDirection")),
+                temperature_c=get_avg("airTemperature"),
+                humidity_percent=int(get_avg("humidity")),
+                cloud_cover_percent=int(get_avg("cloudCover")),
+                visibility_km=get_avg("visibility") / 1000 if get_avg("visibility") > 100 else get_avg("visibility"),
+                precipitation_mm=get_avg("precipitation")
+            )
+        except Exception as e:
+            logger.warning(f"Stormglass fetch failed: {e}")
+            return None
+
+    async def fetch_hourly(self, lat: float, lon: float, hours: int = 24) -> List[Dict]:
+        """Fetch hourly marine forecast from Stormglass"""
+        if not self.enabled:
+            return []
+
+        try:
+            end = datetime.now() + timedelta(hours=hours)
+            params = {
+                "lat": lat,
+                "lng": lon,
+                "params": "windSpeed,windDirection,gust,airTemperature,humidity,cloudCover,visibility,precipitation,waveHeight,wavePeriod",
+                "end": int(end.timestamp())
+            }
+            headers = {"Authorization": self.api_key}
+
+            resp = await self.client.get(f"{self.BASE_URL}/weather/point", params=params, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+
+            result = []
+            for hour_data in data.get("hours", [])[:hours]:
+                def get_avg(field):
+                    vals = hour_data.get(field, {})
+                    if isinstance(vals, dict):
+                        numbers = [v for v in vals.values() if isinstance(v, (int, float))]
+                        return sum(numbers) / len(numbers) if numbers else 0
+                    return vals or 0
+
+                result.append({
+                    "source": self.name,
+                    "time": hour_data.get("time"),
+                    "wind_speed_knots": self._ms_to_knots(get_avg("windSpeed")),
+                    "wind_gusts_knots": self._ms_to_knots(get_avg("gust")),
+                    "wind_direction_deg": int(get_avg("windDirection")),
+                    "temperature_c": get_avg("airTemperature"),
+                    "humidity_percent": int(get_avg("humidity")),
+                    "cloud_cover_percent": int(get_avg("cloudCover")),
+                    "visibility_km": get_avg("visibility") / 1000 if get_avg("visibility") > 100 else get_avg("visibility"),
+                    "precipitation_mm": get_avg("precipitation"),
+                    "wave_height_m": get_avg("waveHeight"),
+                    "wave_period_s": get_avg("wavePeriod")
+                })
+
+            return result
+        except Exception as e:
+            logger.warning(f"Stormglass hourly fetch failed: {e}")
+            return []
+
+
+class IMSSource:
+    """Israel Meteorological Service - Official Israeli weather data"""
+
+    # IMS public API endpoints
+    BASE_URL = "https://ims.gov.il/he/ObservationDataAPI"
+    FORECAST_URL = "https://ims.gov.il/he/ForecastAPI"
+
+    # Mapping of IMS station IDs to locations
+    STATIONS = {
+        "tel_aviv": 178,
+        "jerusalem": 167,
+        "haifa": 58,
+        "eilat": 208,
+        "beer_sheva": 172,
+        "tiberias": 69
+    }
+
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
+        self.name = "ims"
+        self.enabled = True  # IMS is free, no API key needed
+
+    def _find_nearest_station(self, lat: float, lon: float) -> Optional[int]:
+        """Find nearest IMS station to coordinates"""
+        # Station coordinates (approximate)
+        stations = {
+            178: (32.08, 34.78),   # Tel Aviv
+            167: (31.77, 35.21),   # Jerusalem
+            58: (32.79, 34.99),    # Haifa
+            208: (29.56, 34.95),   # Eilat
+            172: (31.25, 34.79),   # Beer Sheva
+            69: (32.79, 35.53)     # Tiberias
+        }
+
+        min_dist = float('inf')
+        nearest = None
+
+        for station_id, (slat, slon) in stations.items():
+            dist = math.sqrt((lat - slat)**2 + (lon - slon)**2)
+            if dist < min_dist:
+                min_dist = dist
+                nearest = station_id
+
+        return nearest
+
+    async def fetch_current(self, lat: float, lon: float) -> Optional[WeatherData]:
+        """Fetch current observations from IMS"""
+        try:
+            station = self._find_nearest_station(lat, lon)
+            if not station:
+                return None
+
+            # IMS API call
+            resp = await self.client.get(
+                f"{self.BASE_URL}/observation/{station}",
+                timeout=10.0
+            )
+
+            if resp.status_code != 200:
+                # IMS API might not be available, skip silently
+                return None
+
+            data = resp.json()
+
+            # Parse IMS response format
+            obs = data.get("observation", {})
+
+            return WeatherData(
+                source=self.name,
+                timestamp=datetime.now(),
+                wind_speed_knots=float(obs.get("wind_speed", 0)) * 1.94384,  # km/h to knots
+                wind_gusts_knots=float(obs.get("wind_gust", 0)) * 1.94384 if obs.get("wind_gust") else None,
+                wind_direction_deg=int(obs.get("wind_direction", 0)),
+                temperature_c=float(obs.get("temperature", 20)),
+                humidity_percent=int(obs.get("humidity", 50)),
+                cloud_cover_percent=0,  # IMS may not provide this
+                visibility_km=float(obs.get("visibility", 50)),
+                precipitation_mm=float(obs.get("rain", 0))
+            )
+        except Exception as e:
+            # IMS API failures are common, log at debug level
+            logger.debug(f"IMS fetch failed: {e}")
+            return None
+
+    async def fetch_hourly(self, lat: float, lon: float, hours: int = 24) -> List[Dict]:
+        """IMS doesn't provide detailed hourly API, return empty"""
+        return []
+
+
 class MultiSourceWeather:
     """
     Aggregates weather data from multiple sources for better accuracy.
@@ -713,7 +915,9 @@ class MultiSourceWeather:
         "open_meteo": 1.0,      # Good baseline, always available
         "openweathermap": 1.2,  # Generally reliable
         "weatherapi": 1.1,      # Good coverage
-        "windy": 1.3            # High quality forecast data
+        "windy": 1.3,           # High quality forecast data
+        "stormglass": 1.4,      # Premium marine data
+        "ims": 1.5              # Official Israeli observations (highest trust)
     }
 
     def __init__(self):
@@ -722,7 +926,9 @@ class MultiSourceWeather:
             OpenMeteoSource(self.client),
             OpenWeatherMapSource(self.client),
             WeatherAPISource(self.client),
-            WindySource(self.client)
+            WindySource(self.client),
+            StormglassSource(self.client),
+            IMSSource(self.client)
         ]
         self.validator = DataValidator()
 

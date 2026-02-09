@@ -254,6 +254,145 @@ async def compare_weather_sources(lat: float, lon: float):
         raise HTTPException(500, str(e))
 
 
+# ============ WEATHER ALERTS ============
+@app.get("/api/weather/alerts")
+async def get_weather_alerts():
+    """Get active weather alerts"""
+    try:
+        from weather_alerts import alert_system
+        return alert_system.get_alert_summary()
+    except Exception as e:
+        logger.error(f"Error getting alerts: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/weather/alerts/check/{lat}/{lon}")
+async def check_location_alerts(lat: float, lon: float):
+    """Check for alerts at a specific location"""
+    try:
+        from weather_alerts import alert_system
+        from multi_source_weather import multi_weather
+
+        weather = await multi_weather.fetch_current(lat, lon)
+        if not weather:
+            return {"alerts": [], "message": "Could not fetch weather data"}
+
+        alerts = alert_system.check_conditions(weather, f"{lat},{lon}")
+        return {
+            "location": {"lat": lat, "lon": lon},
+            "alerts": [a.to_dict() for a in alerts],
+            "alert_count": len(alerts),
+            "checked_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error checking alerts: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ============ CACHE STATS ============
+@app.get("/api/cache/stats")
+async def get_cache_stats():
+    """Get weather cache statistics"""
+    try:
+        from weather_cache import weather_cache
+        return weather_cache.get_stats()
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# ============ ACCURACY TRACKING ============
+@app.get("/api/accuracy/report")
+async def get_accuracy_report():
+    """Get forecast accuracy report"""
+    try:
+        from accuracy_tracker import accuracy_tracker
+        return accuracy_tracker.get_accuracy_report()
+    except Exception as e:
+        logger.error(f"Error getting accuracy report: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/accuracy/weights")
+async def get_recommended_weights():
+    """Get recommended source weights based on accuracy"""
+    try:
+        from accuracy_tracker import accuracy_tracker
+        return {
+            "weights": accuracy_tracker.get_source_weights(),
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# ============ USER FEEDBACK ============
+@app.get("/api/feedback/types")
+async def get_feedback_types():
+    """Get available feedback types"""
+    from user_feedback import FEEDBACK_TYPES
+    return {"types": FEEDBACK_TYPES}
+
+
+@app.post("/api/feedback/submit")
+async def submit_feedback(
+    location_id: str,
+    feedback_type: str,
+    predicted_wind: Optional[float] = None,
+    predicted_temp: Optional[float] = None,
+    reported_wind: Optional[float] = None,
+    reported_temp: Optional[float] = None,
+    comment: Optional[str] = None
+):
+    """Submit user feedback about forecast accuracy"""
+    try:
+        from user_feedback import feedback_system
+
+        predicted = {}
+        reported = {}
+
+        if predicted_wind is not None:
+            predicted["wind_speed_knots"] = predicted_wind
+        if predicted_temp is not None:
+            predicted["temperature_c"] = predicted_temp
+        if reported_wind is not None:
+            reported["wind_speed_knots"] = reported_wind
+        if reported_temp is not None:
+            reported["temperature_c"] = reported_temp
+
+        result = feedback_system.submit_feedback(
+            location_id=location_id,
+            feedback_type=feedback_type,
+            predicted=predicted if predicted else None,
+            reported=reported if reported else None,
+            comment=comment
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Error submitting feedback: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.get("/api/feedback/stats")
+async def get_feedback_stats(location_id: Optional[str] = None):
+    """Get feedback statistics"""
+    try:
+        from user_feedback import feedback_system
+        return feedback_system.get_feedback_stats(location_id)
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/feedback/recent")
+async def get_recent_feedback(limit: int = 20):
+    """Get recent feedback entries"""
+    try:
+        from user_feedback import feedback_system
+        return {"feedback": feedback_system.get_recent_feedback(limit)}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 # ============ KITE ENDPOINTS ============
 @app.get("/api/kite/spots")
 async def get_kite_spots(region: Optional[str] = None):
