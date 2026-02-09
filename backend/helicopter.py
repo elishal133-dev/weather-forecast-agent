@@ -47,7 +47,7 @@ HELICOPTER_LOCATIONS = [
     {"id": "dead_sea", "name": "Dead Sea", "name_he": "ים המלח", "lat": 31.5000, "lon": 35.4732},
     {"id": "arad", "name": "Arad", "name_he": "ערד", "lat": 31.2589, "lon": 35.2126},
     {"id": "mitzpe_ramon", "name": "Mitzpe Ramon", "name_he": "מצפה רמון", "lat": 30.6100, "lon": 34.8015},
-    {"id": "nahal_david", "name": "Nahal David", "name_he": "נחל דוד", "lat": 31.4667, "lon": 35.3833},
+    {"id": "ramat_david", "name": "Ramat David", "name_he": "רמת דוד", "lat": 32.6653, "lon": 35.1796},
     {"id": "mount_meron", "name": "Mount Meron", "name_he": "הר מירון", "lat": 32.9986, "lon": 35.4100},
     {"id": "golan_heights", "name": "Golan Heights", "name_he": "רמת הגולן", "lat": 33.0500, "lon": 35.7500},
     {"id": "haifa", "name": "Haifa", "name_he": "חיפה", "lat": 32.7940, "lon": 34.9896},
