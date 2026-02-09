@@ -7,17 +7,50 @@ With automatic data verification
 import asyncio
 import logging
 import os
+import re
+import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+
+# ============ Rate Limiting ============
+class RateLimiter:
+    """Simple in-memory rate limiter"""
+    def __init__(self, requests_per_minute: int = 60):
+        self.requests_per_minute = requests_per_minute
+        self.requests: Dict[str, list] = defaultdict(list)
+
+    def is_allowed(self, client_ip: str) -> bool:
+        now = time.time()
+        minute_ago = now - 60
+
+        # Clean old requests
+        self.requests[client_ip] = [t for t in self.requests[client_ip] if t > minute_ago]
+
+        # Check limit
+        if len(self.requests[client_ip]) >= self.requests_per_minute:
+            return False
+
+        self.requests[client_ip].append(now)
+        return True
+
+rate_limiter = RateLimiter(requests_per_minute=60)
+
+
+# ============ Input Validation ============
+def validate_location_id(location_id: str) -> bool:
+    """Validate location ID format - alphanumeric and underscores only"""
+    return bool(re.match(r'^[a-zA-Z0-9_-]{1,50}$', location_id))
 
 # Kite imports
 from spots import (
@@ -170,13 +203,43 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# CORS - restrict to same origin in production, allow localhost for dev
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "").split(",") if os.environ.get("ALLOWED_ORIGINS") else []
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS else ["*"],
+    allow_credentials=False,  # Don't allow credentials with wildcard origins
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+# Rate limiting middleware
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # Skip rate limiting for static files
+    if request.url.path in ['/', '/style.css', '/app.js', '/manifest.json']:
+        return await call_next(request)
+
+    client_ip = request.client.host if request.client else "unknown"
+
+    if not rate_limiter.is_allowed(client_ip):
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Too many requests. Please try again later."}
+        )
+
+    return await call_next(request)
 
 
 # ============ Static Files ============
@@ -235,7 +298,7 @@ async def get_weather_validation():
         }
     except Exception as e:
         logger.error(f"Error getting validation report: {e}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "An internal error occurred"}
 
 
 @app.get("/api/weather/compare/{lat}/{lon}")
@@ -251,7 +314,7 @@ async def compare_weather_sources(lat: float, lon: float):
         }
     except Exception as e:
         logger.error(f"Error comparing sources: {e}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "An internal error occurred")
 
 
 # ============ WEATHER ALERTS ============
@@ -263,7 +326,7 @@ async def get_weather_alerts():
         return alert_system.get_alert_summary()
     except Exception as e:
         logger.error(f"Error getting alerts: {e}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "An internal error occurred"}
 
 
 @app.get("/api/weather/alerts/check/{lat}/{lon}")
@@ -286,7 +349,7 @@ async def check_location_alerts(lat: float, lon: float):
         }
     except Exception as e:
         logger.error(f"Error checking alerts: {e}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "An internal error occurred")
 
 
 # ============ CACHE STATS ============
@@ -297,7 +360,7 @@ async def get_cache_stats():
         from weather_cache import weather_cache
         return weather_cache.get_stats()
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "An internal error occurred"}
 
 
 # ============ ACCURACY TRACKING ============
@@ -309,7 +372,7 @@ async def get_accuracy_report():
         return accuracy_tracker.get_accuracy_report()
     except Exception as e:
         logger.error(f"Error getting accuracy report: {e}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "An internal error occurred"}
 
 
 @app.get("/api/accuracy/weights")
@@ -322,7 +385,7 @@ async def get_recommended_weights():
             "generated_at": datetime.now().isoformat()
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "An internal error occurred"}
 
 
 # ============ USER FEEDBACK ============
@@ -344,6 +407,14 @@ async def submit_feedback(
     comment: Optional[str] = None
 ):
     """Submit user feedback about forecast accuracy"""
+    # Input validation
+    if not validate_location_id(location_id):
+        raise HTTPException(400, "Invalid location ID format")
+    if not validate_location_id(feedback_type):
+        raise HTTPException(400, "Invalid feedback type format")
+    if comment and len(comment) > 500:
+        raise HTTPException(400, "Comment too long (max 500 characters)")
+
     try:
         from user_feedback import feedback_system
 
@@ -370,7 +441,7 @@ async def submit_feedback(
         return result
     except Exception as e:
         logger.error(f"Error submitting feedback: {e}")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "An internal error occurred")
 
 
 @app.get("/api/feedback/stats")
@@ -380,7 +451,7 @@ async def get_feedback_stats(location_id: Optional[str] = None):
         from user_feedback import feedback_system
         return feedback_system.get_feedback_stats(location_id)
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "An internal error occurred"}
 
 
 @app.get("/api/feedback/recent")
@@ -390,7 +461,7 @@ async def get_recent_feedback(limit: int = 20):
         from user_feedback import feedback_system
         return {"feedback": feedback_system.get_recent_feedback(limit)}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "An internal error occurred"}
 
 
 # ============ KITE ENDPOINTS ============
@@ -467,6 +538,9 @@ async def get_kite_rankings(
 @app.get("/api/kite/forecast/{spot_id}")
 async def get_kite_spot_forecast(spot_id: str, hours: int = Query(24, ge=1, le=72)):
     """Get hourly forecast for a kite spot"""
+    if not validate_location_id(spot_id):
+        raise HTTPException(400, "Invalid spot ID format")
+
     spot = get_spot_by_id(spot_id)
     if not spot:
         raise HTTPException(404, "Spot not found")
@@ -508,9 +582,12 @@ async def get_helicopter_locations():
 @app.get("/api/helicopter/forecast/{location}")
 async def get_helicopter_forecast(location: str, days: int = Query(3, ge=1, le=7)):
     """Get helicopter flight conditions forecast with background verification"""
+    if not validate_location_id(location):
+        raise HTTPException(400, "Invalid location ID format")
+
     forecast = await app_state.helicopter_service.get_forecast(location, days)
     if not forecast:
-        raise HTTPException(404, f"Location not found: {location}")
+        raise HTTPException(404, "Location not found")
 
     # Run verification in background (non-blocking)
     asyncio.create_task(verify_helicopter_forecast_background(forecast))
@@ -534,9 +611,12 @@ async def get_stars_locations():
 @app.get("/api/stars/forecast/{location}")
 async def get_stars_forecast(location: str, days: int = Query(7, ge=1, le=14)):
     """Get stargazing conditions forecast with background verification"""
+    if not validate_location_id(location):
+        raise HTTPException(400, "Invalid location ID format")
+
     forecast = await app_state.stars_service.get_forecast(location, days)
     if not forecast:
-        raise HTTPException(404, f"Location not found: {location}")
+        raise HTTPException(404, "Location not found")
 
     # Run verification in background (non-blocking)
     asyncio.create_task(verify_stars_forecast_background(forecast))
