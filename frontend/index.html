@@ -43,6 +43,10 @@
                 <span class="mode-icon">⭐</span>
                 <span class="mode-name">צפייה בכוכבים</span>
             </button>
+            <button class="mode-tab" data-mode="workout" onclick="switchMode('workout')">
+                <span class="mode-icon">💪</span>
+                <span class="mode-name">אימון</span>
+            </button>
         </nav>
 
         <!-- Sub-filter (for kite regions) -->
@@ -53,6 +57,15 @@
             <button class="filter-btn" data-region="south">דרום</button>
             <button class="filter-btn" data-region="eilat">אילת</button>
             <button class="filter-btn" data-region="kinneret">כנרת</button>
+        </nav>
+
+        <!-- Workout sub-filter -->
+        <nav id="workout-filter" class="sub-filter hidden">
+            <button class="wfilter-btn active" data-wview="today" onclick="switchWorkoutView('today')">היום</button>
+            <button class="wfilter-btn" data-wview="generate" onclick="switchWorkoutView('generate')">אימון חדש</button>
+            <button class="wfilter-btn" data-wview="schedule" onclick="switchWorkoutView('schedule')">לוח זמנים</button>
+            <button class="wfilter-btn" data-wview="progress" onclick="switchWorkoutView('progress')">התקדמות</button>
+            <button class="wfilter-btn" data-wview="summary" onclick="switchWorkoutView('summary')">סיכום שבועי</button>
         </nav>
 
         <!-- Main Content -->

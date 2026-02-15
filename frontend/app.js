@@ -23,6 +23,7 @@ function escapeAttr(str) {
 // ============ State ============
 let currentMode = 'kite';
 let currentRegion = 'all';
+let currentWorkoutView = 'today';
 let data = {};
 
 // ============ Translations ============
@@ -39,7 +40,17 @@ const translations = {
     modes: {
         'helicopter': 'טיסות',
         'kite': 'קייט',
-        'stars': 'צפייה בכוכבים'
+        'stars': 'צפייה בכוכבים',
+        'workout': 'אימון'
+    },
+    workoutTypes: {
+        'strength': 'כוח', 'cardio': 'אירובי', 'hiit': 'HIIT',
+        'flexibility': 'גמישות', 'mixed': 'משולב'
+    },
+    muscleGroups: {
+        'chest': 'חזה', 'back': 'גב', 'shoulders': 'כתפיים',
+        'biceps': 'ביספס', 'triceps': 'טרייספס', 'legs': 'רגליים',
+        'core': 'ליבה', 'glutes': 'ישבן', 'full_body': 'גוף מלא'
     }
 };
 
@@ -62,13 +73,28 @@ function switchMode(mode) {
 
     // Show/hide region filter (only for kite)
     const subFilter = $('sub-filter');
+    const workoutFilter = $('workout-filter');
     if (mode === 'kite') {
         show(subFilter);
+        hide(workoutFilter);
+    } else if (mode === 'workout') {
+        hide(subFilter);
+        show(workoutFilter);
     } else {
         hide(subFilter);
+        hide(workoutFilter);
     }
 
     // Load data
+    loadData();
+}
+
+// ============ Workout View Switching ============
+function switchWorkoutView(view) {
+    currentWorkoutView = view;
+    document.querySelectorAll('.wfilter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.wview === view);
+    });
     loadData();
 }
 
@@ -227,6 +253,521 @@ function renderStarsCard(item, rank) {
     `;
 }
 
+// ============ Workout API ============
+async function fetchWorkoutToday() {
+    const [todayRes, sessionsRes] = await Promise.all([
+        fetch('/api/workout/today', {signal: AbortSignal.timeout(60000)}),
+        fetch('/api/workout/sessions?limit=5', {signal: AbortSignal.timeout(60000)})
+    ]);
+    if (!todayRes.ok || !sessionsRes.ok) throw new Error('Failed to fetch');
+    const today = await todayRes.json();
+    const sessions = await sessionsRes.json();
+    return { today, sessions };
+}
+
+async function fetchWorkoutProgress() {
+    const res = await fetch('/api/workout/progress?days=30', {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function fetchWorkoutSchedule() {
+    const res = await fetch('/api/workout/schedule', {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function fetchWeeklySummary() {
+    const res = await fetch('/api/workout/summary?week_offset=0', {signal: AbortSignal.timeout(60000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function generateWorkout(type, muscles, duration) {
+    const body = { duration_minutes: duration || 30 };
+    if (type) body.workout_type = type;
+    if (muscles && muscles.length) body.target_muscles = muscles;
+
+    const res = await fetch('/api/workout/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function completeSession(sessionId, rating) {
+    const body = { rating: rating || null };
+    const res = await fetch(`/api/workout/sessions/${sessionId}/complete`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function addToSchedule(day, time, type, duration, label) {
+    const body = {
+        day, time_of_day: time, workout_type: type,
+        duration_minutes: duration || 30, label: label || ''
+    };
+    const res = await fetch('/api/workout/schedule', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+async function removeFromSchedule(scheduleId) {
+    const res = await fetch(`/api/workout/schedule/${scheduleId}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(60000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return true;
+}
+
+// ============ Workout Rendering ============
+function renderWorkoutToday(data) {
+    const { today, sessions } = data;
+    let html = '';
+
+    // Today's scheduled
+    if (today.workouts && today.workouts.length > 0) {
+        html += '<h3 style="color:var(--text-secondary);margin-bottom:12px">אימונים מתוכננים להיום</h3>';
+        today.workouts.forEach(w => {
+            const typeHe = translations.workoutTypes[w.workout_type] || w.workout_type;
+            html += `
+                <div class="schedule-entry" style="margin-bottom:8px">
+                    <div class="schedule-info">
+                        <div class="schedule-day">${escapeHtml(w.label || typeHe)}</div>
+                        <div class="schedule-time">${escapeHtml(w.time_of_day)} - ${w.duration_minutes} דקות</div>
+                        <div class="schedule-type">${escapeHtml(typeHe)}</div>
+                    </div>
+                    <button class="workout-btn small" onclick="quickGenerate('${escapeAttr(w.workout_type)}', ${w.duration_minutes})">התחל</button>
+                </div>`;
+        });
+    } else {
+        html += `
+            <div style="text-align:center;padding:24px;color:var(--text-secondary)">
+                <div style="font-size:2rem;margin-bottom:8px">📅</div>
+                <p>אין אימונים מתוכננים להיום</p>
+                <button class="workout-btn small" style="margin-top:12px" onclick="switchWorkoutView('generate')">צור אימון חדש</button>
+            </div>`;
+    }
+
+    // Recent sessions
+    if (sessions.sessions && sessions.sessions.length > 0) {
+        html += '<h3 style="color:var(--text-secondary);margin:16px 0 12px">אימונים אחרונים</h3>';
+        html += '<div class="session-list">';
+        sessions.sessions.forEach(s => {
+            const typeHe = translations.workoutTypes[s.workout_type] || s.workout_type;
+            const dateStr = new Date(s.date).toLocaleDateString('he-IL', {day: 'numeric', month: 'numeric'});
+            const statusClass = s.completed ? 'complete' : 'pending';
+            const statusText = s.completed ? 'הושלם' : 'ממתין';
+            const exerciseCount = (s.exercises || []).length;
+            const sessionId = escapeAttr(s.id);
+
+            html += `
+                <div class="session-item" onclick="openWorkoutDetail('${sessionId}')">
+                    <div class="session-info">
+                        <h4>${escapeHtml(typeHe)} - ${dateStr}</h4>
+                        <div class="session-meta">${exerciseCount} תרגילים | ${s.duration_minutes} דקות | ~${s.estimated_calories || 0} קלוריות</div>
+                    </div>
+                    <span class="session-status ${statusClass}">${statusText}</span>
+                </div>`;
+        });
+        html += '</div>';
+    }
+
+    return html;
+}
+
+function renderWorkoutGenerate() {
+    return `
+        <div class="workout-form">
+            <h3 style="text-align:center;margin-bottom:8px">צור אימון חדש</h3>
+            <div class="form-group">
+                <label>סוג אימון</label>
+                <select id="gen-type">
+                    <option value="">אוטומטי</option>
+                    <option value="strength">כוח</option>
+                    <option value="cardio">אירובי</option>
+                    <option value="hiit">HIIT</option>
+                    <option value="flexibility">גמישות</option>
+                    <option value="mixed">משולב</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>קבוצת שרירים (אופציונלי)</label>
+                <select id="gen-muscles">
+                    <option value="">הכל</option>
+                    <option value="chest">חזה</option>
+                    <option value="back">גב</option>
+                    <option value="shoulders">כתפיים</option>
+                    <option value="legs">רגליים</option>
+                    <option value="core">ליבה</option>
+                    <option value="glutes">ישבן</option>
+                    <option value="full_body">גוף מלא</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>משך (דקות)</label>
+                <input type="number" id="gen-duration" value="30" min="10" max="90" step="5">
+            </div>
+            <button class="workout-btn" onclick="doGenerateWorkout()">צור אימון</button>
+        </div>
+        <div id="generated-workout"></div>`;
+}
+
+function renderGeneratedWorkout(workout) {
+    const typeHe = translations.workoutTypes[workout.workout_type] || workout.workout_type;
+    let html = `
+        <div class="workout-card" style="margin-top:16px">
+            <div class="card-header">
+                <div class="card-info">
+                    <h3>${escapeHtml(typeHe)}</h3>
+                    <span class="subtitle">${workout.exercises.length} תרגילים</span>
+                </div>
+                <span class="workout-type-badge ${escapeAttr(workout.workout_type)}">${escapeHtml(typeHe)}</span>
+            </div>
+            <div class="workout-stats">
+                <div class="workout-stat">
+                    <span class="stat-value">${workout.duration_minutes}</span>
+                    <span class="stat-label">דקות</span>
+                </div>
+                <div class="workout-stat">
+                    <span class="stat-value">${workout.estimated_calories}</span>
+                    <span class="stat-label">קלוריות</span>
+                </div>
+                <div class="workout-stat">
+                    <span class="stat-value">${workout.exercises.length}</span>
+                    <span class="stat-label">תרגילים</span>
+                </div>
+            </div>
+            <div class="exercise-list">`;
+
+    workout.exercises.forEach(ex => {
+        const muscles = (ex.muscle_groups || []).map(m => translations.muscleGroups[m] || m);
+        const detail = ex.is_timed ? `${ex.sets}x${ex.reps}s` : `${ex.sets}x${ex.reps}`;
+        html += `
+            <div class="exercise-item">
+                <span class="exercise-name">${escapeHtml(ex.exercise_name_he || ex.exercise_name)}</span>
+                <span class="exercise-detail">${detail}</span>
+            </div>`;
+    });
+
+    html += `</div>
+            <div style="padding:12px;display:flex;gap:8px">
+                <button class="workout-btn success small" style="flex:1" onclick="doCompleteSession('${escapeAttr(workout.id)}')">סיים אימון</button>
+                <button class="workout-btn secondary small" onclick="doGenerateWorkout()">אימון אחר</button>
+            </div>
+        </div>`;
+
+    return html;
+}
+
+function renderWorkoutSchedule(data) {
+    const schedule = data.schedule || [];
+    let html = '';
+
+    if (schedule.length === 0) {
+        html += '<div style="text-align:center;padding:24px;color:var(--text-secondary)"><p>אין אימונים מתוזמנים</p></div>';
+    } else {
+        schedule.forEach(s => {
+            const typeHe = translations.workoutTypes[s.workout_type] || s.workout_type;
+            const activeClass = s.active ? '' : ' inactive';
+            const schedId = escapeAttr(s.id);
+            html += `
+                <div class="schedule-entry${activeClass}" style="margin-bottom:8px">
+                    <div class="schedule-info">
+                        <div class="schedule-day">${escapeHtml(s.day_he || s.day)}</div>
+                        <div class="schedule-time">${escapeHtml(s.time_of_day)} - ${s.duration_minutes} דקות</div>
+                        <div class="schedule-type">${escapeHtml(s.label || typeHe)}</div>
+                    </div>
+                    <div class="schedule-actions">
+                        <button onclick="doRemoveSchedule('${schedId}')">מחק</button>
+                    </div>
+                </div>`;
+        });
+    }
+
+    // Add new schedule form
+    html += `
+        <div class="workout-form" style="margin-top:16px">
+            <h3 style="text-align:center;margin-bottom:8px">הוסף אימון קבוע</h3>
+            <div class="form-group">
+                <label>יום</label>
+                <select id="sched-day">
+                    <option value="sunday">ראשון</option>
+                    <option value="monday">שני</option>
+                    <option value="tuesday">שלישי</option>
+                    <option value="wednesday">רביעי</option>
+                    <option value="thursday">חמישי</option>
+                    <option value="friday">שישי</option>
+                    <option value="saturday">שבת</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>שעה</label>
+                <input type="time" id="sched-time" value="07:00">
+            </div>
+            <div class="form-group">
+                <label>סוג אימון</label>
+                <select id="sched-type">
+                    <option value="strength">כוח</option>
+                    <option value="cardio">אירובי</option>
+                    <option value="hiit">HIIT</option>
+                    <option value="flexibility">גמישות</option>
+                    <option value="mixed">משולב</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>משך (דקות)</label>
+                <input type="number" id="sched-duration" value="30" min="10" max="90" step="5">
+            </div>
+            <div class="form-group">
+                <label>תווית (אופציונלי)</label>
+                <input type="text" id="sched-label" placeholder="למשל: אימון בוקר">
+            </div>
+            <button class="workout-btn" onclick="doAddSchedule()">הוסף ללוח זמנים</button>
+        </div>`;
+
+    return html;
+}
+
+function renderWorkoutProgress(progress) {
+    let html = '';
+
+    // Streak
+    html += `
+        <div class="streak-badge" style="margin-bottom:16px">
+            <span class="streak-number">${progress.current_streak}</span>
+            <span>ימים ברצף</span>
+        </div>`;
+
+    // Stats grid
+    html += `
+        <div class="progress-section" style="margin-bottom:16px">
+            <h3>30 ימים אחרונים</h3>
+            <div class="progress-grid">
+                <div class="progress-item">
+                    <span class="big-number">${progress.total_workouts}</span>
+                    <span class="progress-label">אימונים</span>
+                </div>
+                <div class="progress-item">
+                    <span class="big-number">${progress.total_duration_minutes}</span>
+                    <span class="progress-label">דקות</span>
+                </div>
+                <div class="progress-item">
+                    <span class="big-number">${progress.total_calories}</span>
+                    <span class="progress-label">קלוריות</span>
+                </div>
+                <div class="progress-item">
+                    <span class="big-number">${progress.workouts_per_week_avg}</span>
+                    <span class="progress-label">לשבוע</span>
+                </div>
+            </div>
+        </div>`;
+
+    // By type
+    if (progress.workouts_by_type && Object.keys(progress.workouts_by_type).length > 0) {
+        html += '<div class="progress-section" style="margin-bottom:16px"><h3>לפי סוג</h3>';
+        for (const [type, count] of Object.entries(progress.workouts_by_type)) {
+            const typeHe = translations.workoutTypes[type] || type;
+            html += `
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+                    <span>${escapeHtml(typeHe)}</span>
+                    <span style="font-weight:600;color:#6c5ce7">${count}</span>
+                </div>`;
+        }
+        html += '</div>';
+    }
+
+    // Muscle groups
+    if (progress.muscle_groups_frequency && Object.keys(progress.muscle_groups_frequency).length > 0) {
+        html += '<div class="progress-section"><h3>קבוצות שרירים</h3>';
+        const sorted = Object.entries(progress.muscle_groups_frequency).sort((a, b) => b[1] - a[1]);
+        for (const [muscle, count] of sorted) {
+            const muscleHe = translations.muscleGroups[muscle] || muscle;
+            html += `
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+                    <span>${escapeHtml(muscleHe)}</span>
+                    <span style="font-weight:600;color:#6c5ce7">${count}</span>
+                </div>`;
+        }
+        html += '</div>';
+    }
+
+    return html;
+}
+
+function renderWeeklySummary(summary) {
+    const s = summary.summary;
+    const goalClass = s.goal_met ? 'met' : 'not-met';
+    const goalText = s.goal_met ? 'יעד שבועי הושג!' : `${s.goal_progress} אימונים`;
+
+    return `
+        <div class="summary-card">
+            <div class="summary-header">
+                <h3>סיכום שבועי</h3>
+                <div class="date-range">${s.week_start} - ${s.week_end}</div>
+            </div>
+            <div class="summary-body">
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <span class="num">${s.total_workouts}</span>
+                        <span class="lbl">אימונים</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="num">${s.total_duration_minutes}</span>
+                        <span class="lbl">דקות</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="num">${s.total_calories}</span>
+                        <span class="lbl">קלוריות</span>
+                    </div>
+                </div>
+                <div class="summary-goal ${goalClass}">
+                    ${escapeHtml(goalText)}
+                </div>
+                ${s.streak_days > 0 ? `<div class="streak-badge" style="margin-top:12px"><span class="streak-number">${s.streak_days}</span><span>ימים ברצף</span></div>` : ''}
+                ${s.workout_days && s.workout_days.length > 0 ?
+                    `<div style="text-align:center;margin-top:12px;color:var(--text-secondary);font-size:0.85rem">ימי אימון: ${escapeHtml(s.workout_days.join(', '))}</div>` : ''}
+            </div>
+        </div>`;
+}
+
+// ============ Workout Actions ============
+async function doGenerateWorkout() {
+    const type = document.getElementById('gen-type')?.value || '';
+    const muscles = document.getElementById('gen-muscles')?.value;
+    const duration = parseInt(document.getElementById('gen-duration')?.value || '30');
+
+    const target = $('generated-workout') || $('content');
+    target.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>יוצר אימון...</p></div>';
+
+    try {
+        const workout = await generateWorkout(type || null, muscles ? [muscles] : null, duration);
+        target.innerHTML = renderGeneratedWorkout(workout);
+    } catch (err) {
+        target.innerHTML = '<p style="text-align:center;color:var(--poor)">שגיאה ביצירת אימון</p>';
+    }
+}
+
+async function quickGenerate(type, duration) {
+    const content = $('content');
+    content.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>יוצר אימון...</p></div>';
+    show(content);
+
+    try {
+        const workout = await generateWorkout(type, null, duration);
+        content.innerHTML = renderGeneratedWorkout(workout);
+    } catch (err) {
+        content.innerHTML = '<p style="text-align:center;color:var(--poor)">שגיאה ביצירת אימון</p>';
+    }
+}
+
+async function doCompleteSession(sessionId) {
+    try {
+        await completeSession(sessionId, 4);
+        loadData();
+    } catch (err) {
+        console.error('Error completing session:', err);
+    }
+}
+
+async function doAddSchedule() {
+    const day = document.getElementById('sched-day').value;
+    const time = document.getElementById('sched-time').value;
+    const type = document.getElementById('sched-type').value;
+    const duration = parseInt(document.getElementById('sched-duration').value || '30');
+    const label = document.getElementById('sched-label').value;
+
+    try {
+        await addToSchedule(day, time, type, duration, label);
+        loadData();
+    } catch (err) {
+        console.error('Error adding to schedule:', err);
+    }
+}
+
+async function doRemoveSchedule(scheduleId) {
+    try {
+        await removeFromSchedule(scheduleId);
+        loadData();
+    } catch (err) {
+        console.error('Error removing from schedule:', err);
+    }
+}
+
+function openWorkoutDetail(sessionId) {
+    const modal = $('modal');
+    const body = $('modal-body');
+
+    show(modal);
+    body.innerHTML = '<div class="loading-container"><div class="spinner"></div></div>';
+
+    fetch(`/api/workout/sessions/${sessionId}`, {signal: AbortSignal.timeout(60000)})
+        .then(res => res.json())
+        .then(session => {
+            const typeHe = translations.workoutTypes[session.workout_type] || session.workout_type;
+            const dateStr = new Date(session.date).toLocaleDateString('he-IL', {weekday: 'long', day: 'numeric', month: 'long'});
+
+            let exHtml = '';
+            (session.exercises || []).forEach(ex => {
+                const detail = ex.is_timed ? `${ex.sets}x${ex.reps}s` : `${ex.sets}x${ex.reps}`;
+                const muscles = (ex.muscle_groups || []).map(m =>
+                    `<span class="muscle-tag">${escapeHtml(translations.muscleGroups[m] || m)}</span>`
+                ).join('');
+                const completedClass = ex.completed ? ' completed' : '';
+                exHtml += `
+                    <div class="exercise-item${completedClass}">
+                        <div style="flex:1">
+                            <div>${escapeHtml(ex.exercise_name_he || ex.exercise_name)}</div>
+                            <div class="exercise-muscles">${muscles}</div>
+                        </div>
+                        <span class="exercise-detail">${detail}</span>
+                    </div>`;
+            });
+
+            const ratingHtml = session.rating ? `<div style="margin-top:8px">דירוג: ${'★'.repeat(session.rating)}${'☆'.repeat(5 - session.rating)}</div>` : '';
+
+            body.innerHTML = `
+                <h2>${escapeHtml(typeHe)}</h2>
+                <p class="subtitle">${dateStr}</p>
+                <div class="workout-stats">
+                    <div class="workout-stat">
+                        <span class="stat-value">${session.duration_minutes}</span>
+                        <span class="stat-label">דקות</span>
+                    </div>
+                    <div class="workout-stat">
+                        <span class="stat-value">${session.estimated_calories || 0}</span>
+                        <span class="stat-label">קלוריות</span>
+                    </div>
+                    <div class="workout-stat">
+                        <span class="stat-value">${session.exercises.length}</span>
+                        <span class="stat-label">תרגילים</span>
+                    </div>
+                </div>
+                ${ratingHtml}
+                <h3 style="margin-top:16px">תרגילים</h3>
+                <div class="exercise-list">${exHtml}</div>
+                ${!session.completed ? `<button class="workout-btn success" style="width:100%;margin-top:16px" onclick="doCompleteSession('${escapeAttr(session.id)}');closeModal()">סיים אימון</button>` : ''}
+            `;
+        })
+        .catch(() => {
+            body.innerHTML = '<p>שגיאה בטעינה</p>';
+        });
+}
+
 // ============ Load Data ============
 async function loadData() {
     const loading = $('loading');
@@ -264,6 +805,23 @@ async function loadData() {
                 content.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:2rem">אין נתונים זמינים כרגע. נסה שוב בעוד דקה.</p>';
             } else {
                 content.innerHTML = result.rankings.map((item, i) => renderStarsCard(item, i + 1)).join('');
+            }
+        } else if (currentMode === 'workout') {
+            if (currentWorkoutView === 'today') {
+                result = await fetchWorkoutToday();
+                content.innerHTML = renderWorkoutToday(result);
+            } else if (currentWorkoutView === 'generate') {
+                content.innerHTML = renderWorkoutGenerate();
+                result = { fetched_at: new Date().toISOString() };
+            } else if (currentWorkoutView === 'schedule') {
+                result = await fetchWorkoutSchedule();
+                content.innerHTML = renderWorkoutSchedule(result);
+            } else if (currentWorkoutView === 'progress') {
+                result = await fetchWorkoutProgress();
+                content.innerHTML = renderWorkoutProgress(result);
+            } else if (currentWorkoutView === 'summary') {
+                result = await fetchWeeklySummary();
+                content.innerHTML = renderWeeklySummary(result);
             }
         }
 
@@ -480,3 +1038,10 @@ window.closeModal = closeModal;
 window.openKiteDetail = openKiteDetail;
 window.openHeliDetail = openHeliDetail;
 window.openStarsDetail = openStarsDetail;
+window.switchWorkoutView = switchWorkoutView;
+window.doGenerateWorkout = doGenerateWorkout;
+window.quickGenerate = quickGenerate;
+window.doCompleteSession = doCompleteSession;
+window.doAddSchedule = doAddSchedule;
+window.doRemoveSchedule = doRemoveSchedule;
+window.openWorkoutDetail = openWorkoutDetail;

@@ -1,7 +1,7 @@
 """
 Israel Outdoor Forecast - Unified Backend
-Three activity modes: Helicopter, Kite, Stargazing
-With automatic data verification
+Activity modes: Helicopter, Kite, Stargazing, Workout
+With automatic data verification and workout agent
 """
 
 import asyncio
@@ -71,6 +71,10 @@ from verification import (
     verifier, verify_kite_rankings_background,
     verify_helicopter_forecast_background, verify_stars_forecast_background
 )
+
+# Workout imports
+from workout import workout_service, WorkoutType, MuscleGroup, Difficulty as WorkoutDifficulty, GoalType
+from workout_scheduler import workout_scheduler, generate_weekly_summary_text
 
 # Configure logging
 logging.basicConfig(
@@ -164,8 +168,8 @@ async def refresh_kite_data():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("=" * 50)
-    logger.info("  Israel Outdoor Forecast")
-    logger.info("  Modes: Helicopter | Kite | Stars")
+    logger.info("  Israel Outdoor Forecast + Workout Agent")
+    logger.info("  Modes: Helicopter | Kite | Stars | Workout")
     logger.info("  Data verification: ENABLED")
     logger.info("=" * 50)
 
@@ -269,7 +273,7 @@ async def health():
     return {
         "status": "healthy",
         "version": "2.1.0",
-        "modes": ["helicopter", "kite", "stars"],
+        "modes": ["helicopter", "kite", "stars", "workout"],
         "last_update": app_state.last_update.isoformat() if app_state.last_update else None,
         "verification": {
             "enabled": True,
@@ -634,6 +638,237 @@ async def get_stars_tonight():
 async def get_stars_rankings():
     """Get ranked locations by stargazing conditions"""
     return await app_state.stars_service.get_rankings()
+
+
+# ============ WORKOUT ENDPOINTS ============
+
+# --- Profile ---
+@app.get("/api/workout/profile")
+async def get_workout_profile():
+    """Get workout user profile"""
+    return workout_service.tracker.get_profile()
+
+
+class ProfileUpdate(BaseModel):
+    goal: Optional[str] = None
+    difficulty: Optional[str] = None
+    workouts_per_week: Optional[int] = None
+    preferred_types: Optional[List[str]] = None
+    excluded_exercises: Optional[List[str]] = None
+    available_equipment: Optional[List[str]] = None
+
+
+@app.post("/api/workout/profile")
+async def update_workout_profile(update: ProfileUpdate):
+    """Update workout user profile"""
+    updates = {k: v for k, v in update.dict().items() if v is not None}
+    if not updates:
+        raise HTTPException(400, "No updates provided")
+    try:
+        return workout_service.tracker.update_profile(updates)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# --- Exercise Library ---
+@app.get("/api/workout/exercises")
+async def get_exercises(
+    workout_type: Optional[str] = None,
+    muscle_group: Optional[str] = None
+):
+    """Get exercise library, optionally filtered"""
+    return {"exercises": workout_service.get_exercises(workout_type, muscle_group)}
+
+
+# --- Generate Workout ---
+class GenerateWorkoutRequest(BaseModel):
+    workout_type: Optional[str] = None
+    target_muscles: Optional[List[str]] = None
+    duration_minutes: int = 30
+
+
+@app.post("/api/workout/generate")
+async def generate_workout(req: GenerateWorkoutRequest):
+    """Generate a new workout based on profile and preferences"""
+    try:
+        workout = workout_service.generate_workout(
+            workout_type=req.workout_type,
+            target_muscles=req.target_muscles,
+            duration_minutes=req.duration_minutes
+        )
+        return workout
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        logger.error(f"Error generating workout: {e}", exc_info=True)
+        raise HTTPException(500, "An internal error occurred")
+
+
+# --- Sessions ---
+@app.get("/api/workout/sessions")
+async def get_workout_sessions(
+    limit: int = Query(20, ge=1, le=100),
+    completed_only: bool = False
+):
+    """Get workout session history"""
+    return {
+        "sessions": workout_service.tracker.get_sessions(limit, completed_only)
+    }
+
+
+@app.get("/api/workout/sessions/{session_id}")
+async def get_workout_session(session_id: str):
+    """Get a specific workout session"""
+    if not validate_location_id(session_id):
+        raise HTTPException(400, "Invalid session ID format")
+    session = workout_service.tracker.get_session(session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+    return session
+
+
+class CompleteSessionRequest(BaseModel):
+    rating: Optional[int] = None
+    notes: str = ""
+    duration_minutes: Optional[int] = None
+    exercise_updates: Optional[List[Dict[str, Any]]] = None
+
+
+@app.post("/api/workout/sessions/{session_id}/complete")
+async def complete_workout_session(session_id: str, req: CompleteSessionRequest):
+    """Mark a workout session as completed"""
+    if not validate_location_id(session_id):
+        raise HTTPException(400, "Invalid session ID format")
+
+    result = workout_service.tracker.complete_session(
+        session_id=session_id,
+        rating=req.rating,
+        notes=req.notes,
+        duration_minutes=req.duration_minutes,
+        exercise_updates=req.exercise_updates
+    )
+    if not result:
+        raise HTTPException(404, "Session not found")
+    return result
+
+
+# --- Progress ---
+@app.get("/api/workout/progress")
+async def get_workout_progress(days: int = Query(30, ge=1, le=365)):
+    """Get workout progress for the last N days"""
+    return workout_service.tracker.get_progress(days)
+
+
+@app.get("/api/workout/exercise/{exercise_id}/history")
+async def get_exercise_history(exercise_id: str, limit: int = Query(10, ge=1, le=50)):
+    """Get history for a specific exercise"""
+    if not validate_location_id(exercise_id):
+        raise HTTPException(400, "Invalid exercise ID format")
+    return {"history": workout_service.tracker.get_exercise_history(exercise_id, limit)}
+
+
+# --- Weekly Summary ---
+@app.get("/api/workout/summary")
+async def get_weekly_summary(week_offset: int = Query(0, ge=0, le=52)):
+    """Get weekly workout summary"""
+    summary = workout_service.tracker.get_weekly_summary(week_offset)
+    formatted = generate_weekly_summary_text(summary)
+    return formatted
+
+
+# --- Schedule ---
+@app.get("/api/workout/schedule")
+async def get_workout_schedule(active_only: bool = True):
+    """Get workout schedule"""
+    return {"schedule": workout_scheduler.get_schedule(active_only)}
+
+
+class ScheduleWorkoutRequest(BaseModel):
+    day: str
+    time_of_day: str
+    workout_type: str
+    duration_minutes: int = 30
+    target_muscles: Optional[List[str]] = None
+    recurring: bool = True
+    notify_before_minutes: int = 30
+    label: str = ""
+
+
+@app.post("/api/workout/schedule")
+async def add_scheduled_workout(req: ScheduleWorkoutRequest):
+    """Add a workout to the schedule"""
+    try:
+        return workout_scheduler.add_scheduled_workout(
+            day=req.day,
+            time_of_day=req.time_of_day,
+            workout_type=req.workout_type,
+            duration_minutes=req.duration_minutes,
+            target_muscles=req.target_muscles,
+            recurring=req.recurring,
+            notify_before_minutes=req.notify_before_minutes,
+            label=req.label
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/workout/schedule/{schedule_id}")
+async def remove_scheduled_workout(schedule_id: str):
+    """Remove a scheduled workout"""
+    if not validate_location_id(schedule_id):
+        raise HTTPException(400, "Invalid schedule ID format")
+    if not workout_scheduler.remove_scheduled_workout(schedule_id):
+        raise HTTPException(404, "Scheduled workout not found")
+    return {"message": "Removed"}
+
+
+@app.post("/api/workout/schedule/{schedule_id}/toggle")
+async def toggle_scheduled_workout(schedule_id: str):
+    """Toggle a scheduled workout active/inactive"""
+    if not validate_location_id(schedule_id):
+        raise HTTPException(400, "Invalid schedule ID format")
+    result = workout_scheduler.toggle_scheduled_workout(schedule_id)
+    if not result:
+        raise HTTPException(404, "Scheduled workout not found")
+    return result
+
+
+# --- Calendar ---
+@app.get("/api/workout/calendar")
+async def get_workout_calendar(weeks: int = Query(4, ge=1, le=12)):
+    """Get calendar view of workouts"""
+    return workout_scheduler.get_calendar_view(weeks)
+
+
+@app.get("/api/workout/today")
+async def get_todays_workouts():
+    """Get workouts scheduled for today"""
+    return {
+        "workouts": workout_scheduler.get_todays_workouts(),
+        "date": date.today().isoformat()
+    }
+
+
+@app.get("/api/workout/upcoming")
+async def get_upcoming_workouts(days: int = Query(7, ge=1, le=30)):
+    """Get upcoming scheduled workouts"""
+    return {"upcoming": workout_scheduler.get_upcoming_workouts(days)}
+
+
+# --- Notifications ---
+@app.get("/api/workout/notifications")
+async def check_workout_notifications():
+    """Check for pending workout notifications"""
+    return {
+        "triggered": workout_scheduler.check_notifications(),
+        "pending": workout_scheduler.get_pending_notifications()
+    }
+
+
+@app.get("/api/workout/notifications/history")
+async def get_notification_history(limit: int = Query(20, ge=1, le=100)):
+    """Get notification history"""
+    return {"notifications": workout_scheduler.get_notification_history(limit)}
 
 
 # ============ REFRESH ============
